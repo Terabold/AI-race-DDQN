@@ -97,19 +97,18 @@ class Game:
         if not self.environment:
             self.initialize_environment()
 
-        # Handle pygame events
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
             
-            # If paused, let pause menu handle events
+            # If paused, ONLY handle pause menu events
             if self.environment.game_state == "paused":
-                if self.environment.pause_menu.handle_event(event, self.environment):
-                    continue  # Event was handled by pause menu
+                self.environment.pause_menu.handle_event(event, self.environment)
+                continue  # ← Skip all other event handling
             
+            # Normal game event handling (only when not paused)
             if event.type == pygame.KEYDOWN:
-                # Restart after game ends
                 if event.key == pygame.K_SPACE:
                     if self.environment.game_state in ["finished", "failed"]:
                         self.environment.restart_game()

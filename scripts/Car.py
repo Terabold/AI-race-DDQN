@@ -42,7 +42,7 @@ class Car(pygame.sprite.Sprite):
     def cast_rays(self, border_mask, obstacle_group=None):
         """Cast rays and store minimum distance (border or obstacle)"""
         car_rotation = -self.angle
-        step = 1
+        step = 2
         width, height = border_mask.get_size()
 
         for idx, direction in enumerate(self.ray_directions):

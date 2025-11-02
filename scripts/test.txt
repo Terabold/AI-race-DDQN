@@ -33,3 +33,7 @@
 # - [ ] Very high FPS (>1000)
 # - [ ] Window resize
 # - [ ] Alt+Tab during training
+
+
+
+seed Obstacle idea

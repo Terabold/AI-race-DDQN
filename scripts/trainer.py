@@ -313,6 +313,12 @@ class Trainer:
         print("\nReturning to menu...")
         self.agent.save_model()
         print("Model saved")
+        try:
+            pygame.mixer.init()
+            print("Audio re-initialized")
+        except:
+            print("Warning: Could not re-initialize audio")
+        
         game_state_manager.setState('menu')
     
     def _save_and_exit(self):
