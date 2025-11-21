@@ -2,4 +2,20 @@ __pycache__/
 
 dump/
 
-journy/*
+# Weights & Biases
+wandb/
+*/wandb/
+wandb/*
+*/wandb/*
+
+# Journey / logging folders (if you have any)
+journey/
+*/journey/
+journey/*
+*/journey/*
+
+# Ignore all pretrained / saved models
+readymodel/
+readymodel/**
+
+first run wandb/
