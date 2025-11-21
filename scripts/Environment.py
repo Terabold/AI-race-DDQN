@@ -4,9 +4,9 @@ from scripts.Constants import *
 from scripts.Car import Car
 from scripts.Obstacle import Obstacle
 from scripts.utils import (draw_finished, draw_failed, draw_ui, 
-                         draw_countdown, draw_pause_overlay, load_sound)
-from pathlib import Path
+                         draw_countdown, load_sound)
 from scripts.GameManager import game_state_manager
+
 class PauseMenu:    
     def __init__(self, surface):
         self.surface = surface
@@ -162,7 +162,7 @@ class Environment:
         self._setup_cars(start_x, start_y, car_color1, car_color2)
 
         # Obstacles
-        self.num_obstacles = 15
+        self.num_obstacles = NUM_OBSTACLES
         self.obstacle_group = pygame.sprite.Group()
         self._generate_obstacles()
 
@@ -183,15 +183,15 @@ class Environment:
         self.all_sprites = pygame.sprite.Group()
 
         if self.car1_active and self.car2_active:
-            # Use FAIR start positions for 2-player mode
-            from scripts.Constants import CAR1_FAIR_START, CAR2_FAIR_START
+            # 2-player mode - use fair start positions
             self.car1 = Car(*CAR1_FAIR_START, car_color1)
             self.car2 = Car(*CAR2_FAIR_START, car_color2)
         else:
-            # Single player uses default position
+            # Single player mode - always use same position
             if self.car1_active:
                 self.car1 = Car(start_x, start_y, car_color1)
             if self.car2_active:
+                # Player 2 solo should use same position as player 1 would
                 self.car2 = Car(start_x, start_y, car_color2)
 
         if self.car1_active:
@@ -254,8 +254,6 @@ class Environment:
             draw_finished(self)
         elif self.game_state == "failed":
             draw_failed(self)
-        elif self.game_state == "paused":
-            draw_pause_overlay(self)
 
     def restart_game(self):        
         if self.car1_active:
@@ -383,7 +381,7 @@ class Environment:
         """Check if a single car hit an obstacle and apply velocity reduction."""
         for obstacle in self.obstacle_group.sprites():
             if pygame.sprite.collide_mask(car, obstacle):
-                car.velocity *= 0.25
+                car.velocity *= OBSTACLE_VELOCITY_REDUCTION
                 self.obstacle_sound.play()
                 obstacle.kill()
                 return pre_velocity > 1.0
@@ -420,6 +418,7 @@ class Environment:
         elif self.game_state == "paused":
             # Use new pause menu instead
             self.pause_menu.draw()
+            
     def _check_single_car_finish(self, car, was_finished):
         """Check if a car just crossed the finish line."""
         if was_finished or car.failed:
@@ -485,27 +484,15 @@ class Environment:
             car.reduce_speed()
 
     def setup_sound(self):
-        self.collide_sound = load_sound(COLLIDE_SOUND, volume=0.25)
-        self.win_sound = load_sound(WIN_SOUND, volume=0.25)
-        self.obstacle_sound = load_sound(OBSTACLE_SOUND, volume=0.25)
-        self.countdown_sound = load_sound(COUNTDOWN_SOUND, volume=0.6)
+        self.collide_sound = load_sound(COLLIDE_SOUND, volume=COLLISION_SOUND_VOLUME)
+        self.win_sound = load_sound(WIN_SOUND, volume=WIN_SOUND_VOLUME)
+        self.obstacle_sound = load_sound(OBSTACLE_SOUND, volume=OBSTACLE_SOUND_VOLUME)
+        self.countdown_sound = load_sound(COUNTDOWN_SOUND, volume=COUNTDOWN_SOUND_VOLUME)
 
         self.is_music_playing = False
         
-        if pygame.mixer.get_init():
-            pygame.mixer.music.load(str(Path(BACKGROUND_MUSIC)))
-            pygame.mixer.music.set_volume(DEFAULT_SOUND_VOLUME)
-        else:
-            self.background_music = load_sound(BACKGROUND_MUSIC, volume=DEFAULT_SOUND_VOLUME)
-
-    def toggle_pause(self):
-        if self.game_state == "running":
-            self.previous_state = self.game_state
-            self.game_state = "paused"
-            self.handle_music(play=False)
-        elif self.game_state == "paused":
-            self.game_state = self.previous_state
-            self.handle_music(play=True)
+        pygame.mixer.music.load(BACKGROUND_MUSIC)
+        pygame.mixer.music.set_volume(DEFAULT_SOUND_VOLUME)
 
     def handle_music(self, play=True):
         if not pygame.mixer.get_init():
@@ -524,8 +511,9 @@ class Environment:
                 pygame.mixer.music.pause()
             self.is_music_playing = False
 
+    # In Environment.py, replace the get_state method (lines 514-547):
+
     def get_state(self, car_num=1):
-        """Get current state for AI agent (for demo/inference mode)"""
         if car_num == 1:
             if not self.car1_active:
                 return None
@@ -537,24 +525,27 @@ class Environment:
         else:
             return None
 
+        import numpy as np
+        
         car.cast_rays(self.track_border_mask, self.obstacle_group)
 
-        # Match AIEnvironment.get_state() exactly - 20 values total
-        normalized_rays = [dist / car.ray_length for dist in car.ray_distances]
-
+        # Normalize rays
+        norm_wall_rays = car.wall_distances / car.ray_length
+        norm_bomb_rays = car.bomb_distances / car.ray_length
+        
         # Normalized velocity
         norm_vel = max(0.0, car.velocity / car.max_velocity)
-
-        # Car orientation (sin/cos to avoid 0/360 discontinuity)
-        angle_rad = math.radians(car.angle)
-        angle_sin = math.sin(angle_rad)
-        angle_cos = math.cos(angle_rad)
-
-        state = [
-            *normalized_rays,   # 0-16 (17 values)
-            norm_vel,           # 17
-            angle_sin,          # 18 (orientation Y component)
-            angle_cos,          # 19 (orientation X component)
-        ]
-
+        
+        # Car orientation
+        angle_rad = np.radians(car.angle)
+        
+        # Combine state - 33 dimensions total
+        state = np.concatenate([
+            norm_wall_rays,              # 15 values (0-14)
+            norm_bomb_rays,              # 15 values (15-29)
+            [norm_vel],                  # 1 value (30)
+            [np.sin(angle_rad)],        # 1 value (31)
+            [np.cos(angle_rad)]         # 1 value (32)
+        ]).astype(np.float32)
+        
         return state

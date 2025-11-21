@@ -8,15 +8,15 @@ class Obstacle(pygame.sprite.Sprite):
         self.show_image = show_image
         if show_image:
             self.image = pygame.image.load(BOMB).convert_alpha() 
-            self.image = pygame.transform.scale(self.image, (20, 20))
+            self.image = pygame.transform.scale(self.image, OBSTACLE_SIZE)
         else:
             # AI training mode - just show hitbox
-            self.image = pygame.Surface((20, 20), pygame.SRCALPHA)
-            pygame.draw.rect(self.image, (255, 0, 0), (5, 5, 10, 10))
+            self.image = pygame.Surface(OBSTACLE_SIZE, pygame.SRCALPHA)
+            pygame.draw.rect(self.image, (255, 0, 0), OBSTACLE_HITBOX)
         
         # Hitbox (same for both)
-        self.mask_surface = pygame.Surface((20, 20), pygame.SRCALPHA) 
-        pygame.draw.rect(self.mask_surface, (255, 255, 255), (5, 5, 10, 10))
+        self.mask_surface = pygame.Surface(OBSTACLE_SIZE, pygame.SRCALPHA) 
+        pygame.draw.rect(self.mask_surface, (255, 255, 255), OBSTACLE_HITBOX)
         self.mask = pygame.mask.from_surface(self.mask_surface)  
         self.rect = self.image.get_rect(center=(x, y))
 

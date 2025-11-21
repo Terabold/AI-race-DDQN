@@ -7,40 +7,33 @@ import os
 from scripts.dqn import DQN
 from scripts.replaybuffer import ReplayBuffer, replaybuffer_from_dict
 
+STATE_DIM = 33 
+ACTION_DIM = 9
 
 class DQNAgent:
-    """
-    DQN Agent with improved hyperparameters for consistency
-    """
-
-    def __init__(self, state_dim, action_dim, device=None):
-        """
-        Initialize the DQN Agent
-        """
-        self.state_dim = state_dim
-        self.action_dim = action_dim
+    def __init__(self, device=None):
         self.device = device if device else torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
         print(f"Using device: {self.device}")
 
         # Networks
-        self.policy_net = DQN(state_dim, action_dim, device=self.device).to(self.device)
-        self.target_net = DQN(state_dim, action_dim, device=self.device).to(self.device)
+        self.policy_net = DQN(STATE_DIM, ACTION_DIM, device=self.device).to(self.device)
+        self.target_net = DQN(STATE_DIM, ACTION_DIM, device=self.device).to(self.device)
         self.target_net.load_state_dict(self.policy_net.state_dict())
         self.target_net.eval()
 
         # IMPROVED HYPERPARAMETERS
-        self.gamma = 0.995
+        self.gamma = 0.96
         self.lr = 0.0001  # Lower learning rate for more stable learning
         self.batch_size = 128  # Smaller batches for more frequent updates
         
         # IMPROVED EPSILON SCHEDULE
         self.epsilon = 1.0
         self.epsilon_min = 0.03  # HIGHER minimum - maintains exploration
-        self.epsilon_decay = 0.99985  # SLOWER decay
+        self.epsilon_decay = 0.999965  # Reaches min (~0.03) after ~100k training steps
         
         # Target network update
-        self.target_update = 50  # Even more stable
+        self.target_update = 150  # Even more stable
         
         # Episode tracking
         self.episode_count = 0
@@ -57,7 +50,7 @@ class DQNAgent:
             mode='max',  # Monitor rewards (maximize)
             factor=0.7,  # CHANGED: Less aggressive reduction (was 0.5)
             patience=1000,  # CHANGED: Wait longer before reducing (was 500)
-            min_lr=1e-6,  # ADDED: Prevent LR from going too low
+            min_lr=1e-5,  # ADDED: Prevent LR from going too low
             verbose=True
         )
 
@@ -66,7 +59,6 @@ class DQNAgent:
         self.model_dir = "models"
         os.makedirs(self.model_dir, exist_ok=True)
         self.model_path = os.path.join(self.model_dir, "model.pt")
-        self.best_model_path = os.path.join(self.model_dir, "best_model.pt")
         
         # Performance tracking - NEW: Track by finish time!
         self.best_reward = -float('inf')
@@ -86,7 +78,7 @@ class DQNAgent:
         
         if training and random.random() < self.epsilon:
             # Exploration
-            return random.randint(0, self.action_dim - 1)
+            return random.randint(0, ACTION_DIM - 1)
         else:
             # Exploitation
             with torch.no_grad():
@@ -110,6 +102,9 @@ class DQNAgent:
         next_states = torch.FloatTensor(next_states).to(self.device)
         dones = torch.FloatTensor(dones).to(self.device)
 
+        # Clip rewards to prevent Q-value explosion
+        rewards = torch.clamp(rewards, -10.0, 10.0)
+
         # Current Q-values
         q_values = self.policy_net(states).gather(1, actions.unsqueeze(1)).squeeze(1)
 
@@ -127,7 +122,7 @@ class DQNAgent:
         # Optimize with gradient clipping
         self.optimizer.zero_grad()
         loss.backward()
-        torch.nn.utils.clip_grad_norm_(self.policy_net.parameters(), 1.0)
+        torch.nn.utils.clip_grad_norm_(self.policy_net.parameters(), 0.5)
         self.optimizer.step()
 
         # Update target network
@@ -176,9 +171,6 @@ class DQNAgent:
                 self.best_finish_time = time_remaining
                 self.best_finish_episode = self.episode_count
                 
-                # Save this as the BEST model (fastest finish)
-                self.save_model(self.best_model_path)
-                
                 improvement = time_remaining - old_best
                 print(f"\n{'='*80}")
                 print(f"🏆 NEW BEST FINISH TIME! 🏆")
@@ -186,7 +178,6 @@ class DQNAgent:
                 print(f"  Time Remaining: {time_remaining:.2f}s / 25.0s")
                 print(f"  Completion Time: {25.0 - time_remaining:.2f}s (Previous best: {25.0 - old_best:.2f}s)")
                 print(f"  Improvement: {improvement:.2f}s faster")
-                print(f"  Model saved to: {self.best_model_path}")
                 print(f"{'='*80}\n")
         
         # Update learning rate based on performance
@@ -297,7 +288,7 @@ class DQNAgent:
         if self.recent_rewards:
             print(f"Recent avg reward: {np.mean(self.recent_rewards):.1f}")
         if self.recent_checkpoints:
-            print(f"Recent avg checkpoints: {np.mean(self.recent_checkpoints):.1f}/16")
+            print(f"Recent avg checkpoints: {np.mean(self.recent_checkpoints):.1f}/25")
         if self.recent_finish_times:
             print(f"Recent avg finish time: {np.mean(self.recent_finish_times):.2f}s remaining (last 100 finished runs)")
         

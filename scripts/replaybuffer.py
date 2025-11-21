@@ -3,7 +3,7 @@ import random
 from collections import deque
 
 class ReplayBuffer:
-    def __init__(self, capacity=10000):
+    def __init__(self, capacity=100000):
         self.buffer = deque(maxlen=capacity)
         self.capacity = capacity
 
@@ -28,7 +28,6 @@ class ReplayBuffer:
         return len(self.buffer)
 
     def to_dict(self):
-        """Serialize the replay buffer to a plain dict."""
         serialized = {'capacity': self.capacity, 'buffer': []}
         for state, action, reward, next_state, done in self.buffer:
             if isinstance(state, np.ndarray):
@@ -43,10 +42,6 @@ class ReplayBuffer:
         return serialized
 
 def replaybuffer_from_dict(data):
-    """
-    Recreate a ReplayBuffer from a dict produced by ReplayBuffer.to_dict.
-    This function avoids silent try/except so data problems are visible.
-    """
     capacity = data.get('capacity', 10000)
     buffer_data = data.get('buffer', [])
     rb = ReplayBuffer(capacity=capacity)

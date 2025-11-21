@@ -3,11 +3,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 
+
+
 class DQN(nn.Module):
-    """
-    Deep Q-Network for racing game AI, structured more like DDQN Keras Brain
-    """
-    def __init__(self, state_dim, action_dim, hidden_dim=256, device=torch.device('cuda' if torch.cuda.is_available() else 'cpu')):
+    def __init__(self, state_dim, action_dim, hidden_dim=128, device=torch.device('cuda' if torch.cuda.is_available() else 'cpu')):
         """
         Initialize the DQN model
         
@@ -24,7 +23,8 @@ class DQN(nn.Module):
         
         # Using a simpler network structure like in DDQN Keras
         self.fc1 = nn.Linear(state_dim, hidden_dim)
-        self.fc2 = nn.Linear(hidden_dim, action_dim)
+        self.fc2 = nn.Linear(hidden_dim, hidden_dim)
+        self.fc3 = nn.Linear(hidden_dim, action_dim)
         self.MSELoss = nn.MSELoss()
         
     def forward(self, x):
@@ -42,8 +42,9 @@ class DQN(nn.Module):
         else:
             x = x.to(self.device)
             
-        x = F.relu(self.fc1(x))
-        q_values = self.fc2(x)
+        x = F.leaky_relu(self.fc1(x))
+        x = F.leaky_relu(self.fc2(x))
+        q_values = self.fc3(x)
         
         return q_values
     
