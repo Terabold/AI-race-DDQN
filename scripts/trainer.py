@@ -18,7 +18,7 @@ ACTION_DIM = 9
 
 # WandB Configuration
 WANDB_PROJECT = "Racing-DQN-Training"
-WANDB_RUN_ID = "gfb76"  # Consistent ID for resuming runs
+WANDB_RUN_ID = "train 2"  # Consistent ID for resuming runs
 WANDB_ENTITY = None  # Set to your wandb username if needed
 
 

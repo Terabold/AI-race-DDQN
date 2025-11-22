@@ -24,12 +24,12 @@ class DQNAgent:
 
         # IMPROVED HYPERPARAMETERS
         self.gamma = 0.96
-        self.lr = 0.0001  # Lower learning rate for more stable learning
+        self.lr = 0.00005  # Lower learning rate for more stable learning
         self.batch_size = 128  # Smaller batches for more frequent updates
         
         # IMPROVED EPSILON SCHEDULE
         self.epsilon = 1.0
-        self.epsilon_min = 0.03  # HIGHER minimum - maintains exploration
+        self.epsilon_min = 0.05  # HIGHER minimum - maintains exploration
         self.epsilon_decay = 0.999965  # Reaches min (~0.03) after ~100k training steps
         
         # Target network update
@@ -42,7 +42,7 @@ class DQNAgent:
         self.replay_buffer = ReplayBuffer(capacity=100000)
         
         # Optimizer with gradient clipping
-        self.optimizer = optim.Adam(self.policy_net.parameters(), lr=self.lr)
+        self.optimizer = optim.AdamW(self.policy_net.parameters(), lr=self.lr)
         
         # Learning rate scheduler - FIXED: More conservative settings + minimum LR
         self.scheduler = optim.lr_scheduler.ReduceLROnPlateau(
@@ -213,7 +213,24 @@ class DQNAgent:
         }
         tmp = save_path + '.tmp'
         torch.save(checkpoint, tmp)
-        os.replace(tmp, save_path)
+        # Windows-safe file replacement with retry
+        import time
+        for attempt in range(3):
+            try:
+                if os.path.exists(save_path):
+                    os.remove(save_path)
+                os.rename(tmp, save_path)
+                break
+            except PermissionError:
+                if attempt < 2:
+                    time.sleep(0.1)
+                else:
+                    print(f"Warning: Could not save model (file locked). Will retry next save.")
+                    if os.path.exists(tmp):
+                        try:
+                            os.remove(tmp)
+                        except:
+                            pass
 
     def load_model(self, filepath=None):
         """

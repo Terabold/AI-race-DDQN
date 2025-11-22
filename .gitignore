@@ -19,3 +19,5 @@ readymodel/
 readymodel/**
 
 first run wandb/
+
+working model 5k episodes WANDB_RUN_ID = train 1/
