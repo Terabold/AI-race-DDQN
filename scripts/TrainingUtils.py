@@ -50,29 +50,37 @@ def calculate_reward(environment, step_info, prev_state=None):
         reward += wall_reward
         breakdown["wall_delta"] = wall_reward
     
-    # BOMB DANGER - DELTA BASED
+    # BOMB DANGER - DELTA BASED (only obstacles, not walls)
     if prev_state is not None and len(car.bomb_distances) > 0:
         # Extract previous bomb distances from prev_state
         prev_bomb_distances = prev_state[15:30]  # Next 15 values are bomb rays
         curr_bomb_distances = car.bomb_distances / car.ray_length
         
-        # Calculate minimum distance change
-        prev_min_bomb = prev_bomb_distances.min()
-        curr_min_bomb = curr_bomb_distances.min()
-        bomb_delta = curr_min_bomb - prev_min_bomb
-        
-        # Reward dodging bombs, penalize approaching
-        if bomb_delta > 0:  # Moving away from bomb
-            bomb_reward = bomb_delta * 1.5
-        else:  # Getting closer to bomb
-            bomb_reward = bomb_delta * 3.0  # Penalty for approaching
-        
-        # Extra penalty if very close
-        if curr_min_bomb < 0.075:
-            bomb_reward -= 3.0
-        
-        reward += bomb_reward
-        breakdown["bomb_delta"] = bomb_reward
+        # Only consider rays that hit obstacles (not walls)
+        if car.bomb_hit_obstacle.any():
+            # Get minimum distance only for rays hitting obstacles
+            obstacle_rays = curr_bomb_distances[car.bomb_hit_obstacle]
+            if len(obstacle_rays) > 0:
+                curr_min_bomb = obstacle_rays.min()
+                
+                # For previous state, estimate which rays had obstacles
+                # Use heuristic: shorter bomb distances than wall distances likely hit obstacles
+                prev_obstacle_rays = prev_bomb_distances[prev_bomb_distances < 0.9]
+                prev_min_bomb = prev_obstacle_rays.min() if len(prev_obstacle_rays) > 0 else 1.0
+                
+                bomb_delta = curr_min_bomb - prev_min_bomb
+                
+                if bomb_delta < 0:  
+                    bomb_reward = bomb_delta * 2.0
+                else:  
+                    bomb_reward = 0
+                
+                # Extra penalty if very close to obstacle
+                if curr_min_bomb < 0.075:
+                    bomb_reward -= 4.0
+                
+                reward += bomb_reward
+                breakdown["bomb_delta"] = bomb_reward
     
     # VELOCITY DELTA - Encourage maintaining speed
     if prev_state is not None:

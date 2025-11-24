@@ -235,90 +235,90 @@ class AIEnvironment:
         self.surface.blit(self.car.image, self.car.rect)
         self.surface.blit(self.finish_line, self.finish_line_position)
 
-        # # === TOP LEFT UI ===
-        # x, y = MARGIN_X, MARGIN_Y_TOP
+        # === TOP LEFT UI ===
+        x, y = MARGIN_X, MARGIN_Y_TOP
         
-        # # Time
-        # time_color = GREEN if self.time_remaining > 10 else (YELLOW if self.time_remaining > 3 else RED)
-        # self._draw_text(f"Time: {self.time_remaining:.1f}s", (x, y), time_color)
-        # y += LINE_HEIGHT
+        # Time
+        time_color = GREEN if self.time_remaining > 10 else (YELLOW if self.time_remaining > 3 else RED)
+        self._draw_text(f"Time: {self.time_remaining:.1f}s", (x, y), time_color)
+        y += LINE_HEIGHT
         
-        # # Checkpoints
-        # total_cp = self.checkpoint_manager.total_checkpoints
-        # current_cp = self.checkpoint_manager.crossed_count
-        # if self.car_finished: current_cp = total_cp
-        # self._draw_text(f"CP: {current_cp}/{total_cp}", (x, y))
-        # y += LINE_HEIGHT
+        # Checkpoints
+        total_cp = self.checkpoint_manager.total_checkpoints
+        current_cp = self.checkpoint_manager.crossed_count
+        if self.car_finished: current_cp = total_cp
+        self._draw_text(f"CP: {current_cp}/{total_cp}", (x, y))
+        y += LINE_HEIGHT
         
-        # # Speed
-        # speed_ratio = self.car.velocity / self.car.max_velocity if self.car.max_velocity > 0 else 0
-        # speed_color = GREEN if speed_ratio > 0.7 else (YELLOW if speed_ratio > 0.3 else RED)
-        # self._draw_text(f"Speed: {speed_ratio:.1%}", (x, y), speed_color)
-        # y += LINE_HEIGHT
+        # Speed
+        speed_ratio = self.car.velocity / self.car.max_velocity if self.car.max_velocity > 0 else 0
+        speed_color = GREEN if speed_ratio > 0.7 else (YELLOW if speed_ratio > 0.3 else RED)
+        self._draw_text(f"Speed: {speed_ratio:.1%}", (x, y), speed_color)
+        y += LINE_HEIGHT
         
-        # # Distance to checkpoint
-        # if self.current_checkpoint_distance > 0:
-        #     dist_color = GREEN if self.current_checkpoint_distance < 200 else (YELLOW if self.current_checkpoint_distance < 400 else WHITE)
-        #     self._draw_text(f"Dist: {self.current_checkpoint_distance:.0f}px", (x, y), dist_color)
-        #     y += LINE_HEIGHT
+        # Distance to checkpoint
+        if self.current_checkpoint_distance > 0:
+            dist_color = GREEN if self.current_checkpoint_distance < 200 else (YELLOW if self.current_checkpoint_distance < 400 else WHITE)
+            self._draw_text(f"Dist: {self.current_checkpoint_distance:.0f}px", (x, y), dist_color)
+            y += LINE_HEIGHT
         
-        # # Distance delta (progress indicator)
-        # if self.prev_checkpoint_distance > 0:
-        #     delta = self.prev_checkpoint_distance - self.current_checkpoint_distance
-        #     delta_color = GREEN if delta > 0 else RED
-        #     self._draw_text(f"Δ: {delta:+.1f}px", (x, y), delta_color)
-        #     y += LINE_HEIGHT
+        # Distance delta (progress indicator)
+        if self.prev_checkpoint_distance > 0:
+            delta = self.prev_checkpoint_distance - self.current_checkpoint_distance
+            delta_color = GREEN if delta > 0 else RED
+            self._draw_text(f"Δ: {delta:+.1f}px", (x, y), delta_color)
+            y += LINE_HEIGHT
 
-        # # === REWARD INFO (TOP RIGHT) ===
-        # rx = self.surface.get_width() - 250
-        # ry = MARGIN_Y_TOP
+        # === REWARD INFO (TOP RIGHT) ===
+        rx = self.surface.get_width() - 250
+        ry = MARGIN_Y_TOP
         
-        # # Episode reward
-        # self._draw_text(f"Episode R: {self.episode_reward:.1f}", (rx, ry), GOLD)
-        # ry += LINE_HEIGHT
+        # Episode reward
+        self._draw_text(f"Episode R: {self.episode_reward:.1f}", (rx, ry), GOLD)
+        ry += LINE_HEIGHT
         
-        # # Last step reward
-        # reward_color = GREEN if self.last_reward > 0 else (RED if self.last_reward < 0 else WHITE)
-        # self._draw_text(f"Step R: {self.last_reward:+.2f}", (rx, ry), reward_color)
-        # ry += LINE_HEIGHT
+        # Last step reward
+        reward_color = GREEN if self.last_reward > 0 else (RED if self.last_reward < 0 else WHITE)
+        self._draw_text(f"Step R: {self.last_reward:+.2f}", (rx, ry), reward_color)
+        ry += LINE_HEIGHT
         
-        # # Reward breakdown (if exists)
-        # if self.last_reward_breakdown:
-        #     ry += 5  # Small gap
-        #     for key, value in self.last_reward_breakdown.items():
-        #         if key == "total": continue
-        #         if value == 0: continue  # Skip zero values
+        # Reward breakdown (if exists)
+        if self.last_reward_breakdown:
+            ry += 5  # Small gap
+            for key, value in self.last_reward_breakdown.items():
+                if key == "total": continue
+                if value == 0: continue  # Skip zero values
                 
-        #         color = GREEN if value > 0 else RED
-        #         self._draw_text(f"{key}: {value:+.1f}", (rx, ry), color, size=UI_DEBUG_SIZE)
-        #         ry += DEBUG_LINE_HEIGHT
+                color = GREEN if value > 0 else RED
+                self._draw_text(f"{key}: {value:+.1f}", (rx, ry), color, size=UI_DEBUG_SIZE)
+                ry += DEBUG_LINE_HEIGHT
 
-        # # === STATE INFO (BOTTOM LEFT) ===
-        # state = self.get_state()
-        # y_debug = self.surface.get_height() - MARGIN_Y_BOTTOM - 10
+        # === STATE INFO (BOTTOM LEFT) ===
+        state = self.get_state()
+        y_debug = self.surface.get_height() - MARGIN_Y_BOTTOM - 10
 
-        # # Create background for readability
-        # info_height = len(state) * DEBUG_LINE_HEIGHT + 20
-        # info_bg = pygame.Surface((250, info_height))
-        # info_bg.set_alpha(180)
-        # info_bg.fill((0, 0, 0))
-        # self.surface.blit(info_bg, (MARGIN_X - 5, y_debug - info_height))
+        # Create background for readability
+        info_height = len(state) * DEBUG_LINE_HEIGHT + 20
+        info_bg = pygame.Surface((250, info_height))
+        info_bg.set_alpha(180)
+        info_bg.fill((0, 0, 0))
+        self.surface.blit(info_bg, (MARGIN_X - 5, y_debug - info_height))
 
-        # y_debug -= info_height - 10
+        y_debug -= info_height - 10
 
-        # # State title
-        # self._draw_text("STATE VECTOR:", (MARGIN_X, y_debug), WHITE, UI_DEBUG_SIZE)
-        # y_debug += DEBUG_LINE_HEIGHT
+        # State title
+        self._draw_text("STATE VECTOR:", (MARGIN_X, y_debug), WHITE, UI_DEBUG_SIZE)
+        y_debug += DEBUG_LINE_HEIGHT
 
-        # # Display all state values
-        # for i, value in enumerate(state):
-        #     # Color code by value
-        #     if value < 0.3:
-        #         color = RED
-        #     elif value < 0.6:
-        #         color = YELLOW
-        #     else:
-        #         color = GREEN
+        # Display all state values
+        for i, value in enumerate(state):
+            # Color code by value
+            if value < 0.3:
+                color = RED
+            elif value < 0.6:
+                color = YELLOW
+            else:
+                color = GREEN
             
-        #     self._draw_text(f"[{i:2d}] {value:.3f}", (MARGIN_X, y_debug), color, UI_DEBUG_SIZE)
-        #     y_debug += DEBUG_LINE_HEIGHT
+            self._draw_text(f"[{i:2d}] {value:.3f}", (MARGIN_X, y_debug), color, UI_DEBUG_SIZE)
+            y_debug += DEBUG_LINE_HEIGHT

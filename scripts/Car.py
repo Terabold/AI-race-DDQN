@@ -39,6 +39,9 @@ class Car(pygame.sprite.Sprite):
         self.wall_distances = np.full(len(self.wall_ray_angles), self.ray_length, dtype=np.float32)
         self.bomb_distances = np.full(len(self.bomb_ray_angles), self.ray_length, dtype=np.float32)
         
+        # Track which bomb rays hit obstacles (vs just walls)
+        self.bomb_hit_obstacle = np.zeros(len(self.bomb_ray_angles), dtype=bool)
+        
         # Collision points for visualization
         self.wall_collision_points = [None] * len(self.wall_ray_angles)
         self.bomb_collision_points = [None] * len(self.bomb_ray_angles)
@@ -99,6 +102,7 @@ class Car(pygame.sprite.Sprite):
     def _cast_bomb_rays(self, border_mask, obstacle_group, car_rotation, step, width, height):
         """Cast rays that detect both walls and bombs"""
         self.bomb_distances.fill(self.ray_length)
+        self.bomb_hit_obstacle.fill(False)
         
         angle_rad = math.radians(car_rotation)
         cos_a, sin_a = math.cos(angle_rad), math.sin(angle_rad)
@@ -110,6 +114,7 @@ class Car(pygame.sprite.Sprite):
             
             min_dist = self.ray_length
             collision_point = None
+            hit_obstacle = False
             
             for dist in range(step, self.ray_length + 1, step):
                 x = int(self.position.x + ray_dir_x * dist)
@@ -118,22 +123,24 @@ class Car(pygame.sprite.Sprite):
                 if not (0 <= x < width and 0 <= y < height):
                     break
                 
+                # Check obstacles FIRST
+                for obstacle in obstacle_group:
+                    if obstacle.rect.collidepoint(x, y):
+                        min_dist = dist
+                        hit_obstacle = True
+                        break
+                
+                if hit_obstacle:
+                    break
+                
                 # Check wall
                 if border_mask.get_at((x, y)):
                     min_dist = dist
                     collision_point = Vector2(x, y)
                     break
-                
-                # Check obstacles
-                for obstacle in obstacle_group:
-                    if obstacle.rect.collidepoint(x, y):
-                        min_dist = dist
-                        break
-                
-                if min_dist < self.ray_length:
-                    break
             
             self.bomb_distances[idx] = min_dist
+            self.bomb_hit_obstacle[idx] = hit_obstacle
             self.bomb_collision_points[idx] = collision_point
 
     def draw_rays(self, surface):
@@ -211,5 +218,6 @@ class Car(pygame.sprite.Sprite):
         # Reset both ray systems
         self.wall_distances.fill(self.ray_length)
         self.bomb_distances.fill(self.ray_length)
+        self.bomb_hit_obstacle.fill(False)
         self.wall_collision_points = [None] * len(self.wall_ray_angles)
         self.bomb_collision_points = [None] * len(self.bomb_ray_angles)

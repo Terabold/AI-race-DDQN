@@ -4,6 +4,7 @@ from scripts.Game import Game
 from scripts.menu import Menu
 from scripts.GameManager import game_state_manager
 from scripts.trainer import Trainer
+from scripts.TesterGame import TesterGame
 
 class Engine:
     def __init__(self):
@@ -16,14 +17,14 @@ class Engine:
         # Initialize game components
         self.game = Game(self.display, self.clock)
         self.menu = Menu(self.display, self.clock)
-        
-        # Import trainer module for training state
         self.trainer = Trainer(self.display, self.clock)
+        self.tester = TesterGame(self.display, self.clock)
         
         self.state = {
             'game': self.game, 
             'menu': self.menu,
-            'training': self.trainer
+            'training': self.trainer,
+            'tester': self.tester
         }
         
     def run(self):
@@ -39,10 +40,14 @@ class Engine:
             # Initialize training when transitioning to training
             if previous_state == 'menu' and current_state == 'training':
                 self.trainer.initialize()
+            
+            # Initialize tester when transitioning
+            if previous_state == 'menu' and current_state == 'tester':
+                self.tester.initialize()
 
-            # Handle FPS cap based on state
-            if current_state == 'training':
-                dt = self.clock.tick() / 1000.0  # No FPS limit for training
+            # Handle FPS cap based on state - NO CAP for training/testing
+            if current_state in ['training', 'tester']:
+                dt = self.clock.tick() / 1000.0  # No FPS limit
             else:
                 dt = self.clock.tick(FPS) / 1000.0  # Normal 60 FPS
 
@@ -53,6 +58,8 @@ class Engine:
                 self.menu.run()
             elif current_state == 'training':
                 self.trainer.run(dt)
+            elif current_state == 'tester':
+                self.tester.run(dt)
 
             previous_state = current_state
             

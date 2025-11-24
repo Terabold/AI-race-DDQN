@@ -47,7 +47,7 @@ class Menu:
         game_state_manager.setState('training')
 
     def start_tester(self):  # NEW
-        game_state_manager.setState('tester')
+       game_state_manager.setState('tester')
 
     def quit_game(self):
         pygame.time.delay(300)
