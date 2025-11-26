@@ -5,144 +5,122 @@ import math
 
 def calculate_reward(environment, step_info, prev_state=None):
     """
-    Reward function focused on state deltas (changes) rather than absolute values
+    Delta-based reward function - CLEANED UP VERSION
+    Keeps your approach but more readable
     """
     reward = 0.0
     breakdown = {}
-    
     car = environment.car
     
-    # PROGRESS REWARD (already delta-based)
+    # 1. CHECKPOINT PROGRESS (most important)
     if environment.checkpoint_manager.current_idx < environment.checkpoint_manager.total_checkpoints:
         distance_delta = environment.prev_checkpoint_distance - environment.current_checkpoint_distance
-        progress = distance_delta * 0.5
         
-        if distance_delta > 0 and car.velocity > 0:
-            speed_mult = 1.0 + (car.velocity / car.max_velocity) * 0.8
-            progress *= speed_mult
-        elif distance_delta < 0:
-            progress *= 1.5
+        if distance_delta > 0:  # Moving toward checkpoint
+            speed_mult = 1.0 + (car.velocity / car.max_velocity) * 0.5
+            progress = distance_delta * 0.3 * speed_mult
+        else:  # Moving away
+            progress = distance_delta * 0.8
         
         reward += progress
         breakdown["progress"] = progress
     
-    # WALL DANGER - DELTA BASED
+    # 2. WALL SAFETY - Delta-based (YOUR APPROACH - KEEP IT!)
     if prev_state is not None and len(car.wall_distances) > 0:
-        # Extract previous wall distances from prev_state
-        prev_wall_distances = prev_state[:15]  # First 15 values are wall rays
-        curr_wall_distances = car.wall_distances / car.ray_length
+        prev_wall = prev_state[:15].min()
+        curr_wall = (car.wall_distances / car.ray_length).min()
+        wall_delta = curr_wall - prev_wall
         
-        # Calculate minimum distance change
-        prev_min_wall = prev_wall_distances.min()
-        curr_min_wall = curr_wall_distances.min()
-        wall_delta = curr_min_wall - prev_min_wall
-        
-        # Reward moving away from walls, penalize getting closer
-        if wall_delta > 0:  # Moving away from wall
+        # Reward moving away, penalize approaching
+        if wall_delta > 0:
             wall_reward = wall_delta * 2.0
-        else:  # Getting closer to wall
-            wall_reward = wall_delta * 5.0  # Heavier penalty for approaching
+        else:
+            wall_reward = wall_delta * 5.0
         
         # Extra penalty if dangerously close
-        if curr_min_wall < 0.05:
+        if curr_wall < 0.05:
             wall_reward -= 5.0
         
         reward += wall_reward
-        breakdown["wall_delta"] = wall_reward
+        breakdown["wall"] = wall_reward
     
-    # BOMB DANGER - DELTA BASED (only obstacles, not walls)
-    if prev_state is not None and len(car.bomb_distances) > 0:
-        # Extract previous bomb distances from prev_state
-        prev_bomb_distances = prev_state[15:30]  # Next 15 values are bomb rays
-        curr_bomb_distances = car.bomb_distances / car.ray_length
+    # 3. OBSTACLE AVOIDANCE - Delta-based for obstacles only
+    if prev_state is not None and len(car.bomb_distances) > 0 and car.bomb_hit_obstacle.any():
+        # Current obstacle distances
+        curr_obstacle_rays = (car.bomb_distances / car.ray_length)[car.bomb_hit_obstacle]
         
-        # Only consider rays that hit obstacles (not walls)
-        if car.bomb_hit_obstacle.any():
-            # Get minimum distance only for rays hitting obstacles
-            obstacle_rays = curr_bomb_distances[car.bomb_hit_obstacle]
-            if len(obstacle_rays) > 0:
-                curr_min_bomb = obstacle_rays.min()
-                
-                # For previous state, estimate which rays had obstacles
-                # Use heuristic: shorter bomb distances than wall distances likely hit obstacles
-                prev_obstacle_rays = prev_bomb_distances[prev_bomb_distances < 0.9]
-                prev_min_bomb = prev_obstacle_rays.min() if len(prev_obstacle_rays) > 0 else 1.0
-                
-                bomb_delta = curr_min_bomb - prev_min_bomb
-                
-                if bomb_delta < 0:  
-                    bomb_reward = bomb_delta * 2.0
-                else:  
-                    bomb_reward = 0
-                
-                # Extra penalty if very close to obstacle
-                if curr_min_bomb < 0.075:
-                    bomb_reward -= 4.0
-                
-                reward += bomb_reward
-                breakdown["bomb_delta"] = bomb_reward
+        if len(curr_obstacle_rays) > 0:
+            curr_min_obstacle = curr_obstacle_rays.min()
+            
+            # Previous obstacle distances (estimate)
+            prev_bomb = prev_state[15:30]
+            prev_obstacle_rays = prev_bomb[prev_bomb < 0.9]
+            prev_min_obstacle = prev_obstacle_rays.min() if len(prev_obstacle_rays) > 0 else 1.0
+            
+            obstacle_delta = curr_min_obstacle - prev_min_obstacle
+            
+            # Penalize approaching obstacles
+            if obstacle_delta < 0:
+                obstacle_reward = obstacle_delta * 3.0
+            else:
+                obstacle_reward = 0
+            
+            # Extra penalty if very close
+            if curr_min_obstacle < 0.075:
+                obstacle_reward -= 4.0
+            
+            reward += obstacle_reward
+            breakdown["obstacle"] = obstacle_reward
     
-    # VELOCITY DELTA - Encourage maintaining speed
+    # 4. SPEED MAINTENANCE - Delta-based
     if prev_state is not None:
-        prev_velocity = prev_state[30]  # Velocity is at index 30
+        prev_velocity = prev_state[30]
         curr_velocity = max(0.0, car.velocity / car.max_velocity)
         velocity_delta = curr_velocity - prev_velocity
         
-        # Reward acceleration, penalize slowing down (unless avoiding obstacle)
         if velocity_delta > 0:
             velocity_reward = velocity_delta * 0.5
         else:
-            velocity_reward = velocity_delta * 0.2  # Small penalty for slowing
+            velocity_reward = velocity_delta * 0.2
         
         reward += velocity_reward
-        breakdown["velocity_delta"] = velocity_reward
+        breakdown["velocity"] = velocity_reward
     
-    # EVENT-BASED REWARDS (already delta-based by nature)
-    
-    # Checkpoint crossed
+    # 5. EVENTS (big rewards/penalties)
     if step_info.get("checkpoint_crossed", False):
-        if environment.checkpoint_manager.current_idx == environment.checkpoint_manager.total_checkpoints:
-            cp_reward = 0.0
-        else:
-            cp_reward = 10.0
+        cp_reward = 15.0
         reward += cp_reward
         breakdown["checkpoint"] = cp_reward
 
-    # Backward crossing
     if step_info.get("backward_crossed", False):
-        back = -8.0
+        back = -10.0
         reward += back
         breakdown["backward"] = back
 
-    # Obstacle hit - Delta event (state changed from not hit to hit)
     if step_info.get("hit_obstacle", False):
-        obs = -15.0
+        obs = -8.0
         reward += obs
-        breakdown["obstacle"] = obs
+        breakdown["hit_obstacle"] = obs
 
-    # Collision - Delta event
     if step_info.get("collision", False):
-        crash = -20.0  # Increased penalty - this is terminal failure
+        crash = -25.0
         reward += crash
         breakdown["collision"] = crash
 
-    # Timeout - Delta event
     if step_info.get("timeout", False):
-        timeout = -10.0
+        timeout = -15.0
         reward += timeout
         breakdown["timeout"] = timeout
 
-    # Finished - Delta event with time bonus
     if step_info.get("finished", False):
-        finish = 50.0
-        time_bonus = (environment.time_remaining / environment.max_time) * 30.0
+        finish = 100.0
+        time_bonus = (environment.time_remaining / environment.max_time) * 50.0
         reward += finish + time_bonus
         breakdown["finish"] = finish
         breakdown["time_bonus"] = time_bonus
     
     breakdown["total"] = reward
     
-    # Store in environment for visualization
     environment.last_reward = reward
     environment.last_reward_breakdown = breakdown.copy()
     environment.episode_reward += reward

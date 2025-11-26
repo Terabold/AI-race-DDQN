@@ -22,35 +22,35 @@ class DQNAgent:
         self.target_net.load_state_dict(self.policy_net.state_dict())
         self.target_net.eval()
 
-        # IMPROVED HYPERPARAMETERS
-        self.gamma = 0.96
-        self.lr = 0.00005  # Lower learning rate for more stable learning
-        self.batch_size = 128  # Smaller batches for more frequent updates
+        # SIMPLIFIED HYPERPARAMETERS
+        self.gamma = 0.95  # Slightly lower discount
+        self.lr = 0.0001  # Slightly higher learning rate
+        self.batch_size = 64  # Smaller batches = more updates
         
-        # IMPROVED EPSILON SCHEDULE
+        # EPSILON SCHEDULE - Decay faster to stable exploration
         self.epsilon = 1.0
-        self.epsilon_min = 0.05  # HIGHER minimum - maintains exploration
-        self.epsilon_decay = 0.999965  # Reaches min (~0.03) after ~100k training steps
+        self.epsilon_min = 0.1  # Higher minimum exploration
+        self.epsilon_decay = 0.9995  # Faster decay to min
         
         # Target network update
-        self.target_update = 150  # Even more stable
+        self.target_update = 200  # Update target less often
         
         # Episode tracking
         self.episode_count = 0
 
         # Replay buffer
-        self.replay_buffer = ReplayBuffer(capacity=100000)
+        self.replay_buffer = ReplayBuffer(capacity=50000)  # Smaller buffer
         
-        # Optimizer with gradient clipping
-        self.optimizer = optim.AdamW(self.policy_net.parameters(), lr=self.lr)
+        # Optimizer - Standard Adam (not AdamW)
+        self.optimizer = optim.Adam(self.policy_net.parameters(), lr=self.lr)
         
-        # Learning rate scheduler - FIXED: More conservative settings + minimum LR
+        # Learning rate scheduler - More aggressive
         self.scheduler = optim.lr_scheduler.ReduceLROnPlateau(
             self.optimizer, 
-            mode='max',  # Monitor rewards (maximize)
-            factor=0.7,  # CHANGED: Less aggressive reduction (was 0.5)
-            patience=1000,  # CHANGED: Wait longer before reducing (was 500)
-            min_lr=1e-5,  # ADDED: Prevent LR from going too low
+            mode='max',
+            factor=0.5,  # Cut LR in half when plateauing
+            patience=500,  # Reduce sooner
+            min_lr=1e-6,
             verbose=True
         )
 
@@ -60,14 +60,14 @@ class DQNAgent:
         os.makedirs(self.model_dir, exist_ok=True)
         self.model_path = os.path.join(self.model_dir, "model.pt")
         
-        # Performance tracking - NEW: Track by finish time!
+        # Performance tracking
         self.best_reward = -float('inf')
-        self.best_finish_time = 0.0  # NEW: Highest time remaining at finish
-        self.best_finish_episode = 0  # NEW: When the best time was achieved
+        self.best_finish_time = 0.0
+        self.best_finish_episode = 0
         self.episodes_without_improvement = 0
         self.recent_rewards = []
         self.recent_checkpoints = []
-        self.recent_finish_times = []  # NEW: Track recent finish times
+        self.recent_finish_times = []
 
     def get_action(self, state, training=True):
         """
@@ -77,10 +77,8 @@ class DQNAgent:
             return 0
         
         if training and random.random() < self.epsilon:
-            # Exploration
             return random.randint(0, ACTION_DIM - 1)
         else:
-            # Exploitation
             with torch.no_grad():
                 state_tensor = torch.FloatTensor(state).unsqueeze(0).to(self.device)
                 q_values = self.policy_net(state_tensor)
@@ -90,7 +88,7 @@ class DQNAgent:
         """
         Update the policy network using a batch from replay buffer
         """
-        if len(self.replay_buffer) < self.batch_size * 4:  # Wait for enough samples
+        if len(self.replay_buffer) < self.batch_size * 2:  # Start training sooner
             return None
 
         # Sample batch
@@ -102,27 +100,25 @@ class DQNAgent:
         next_states = torch.FloatTensor(next_states).to(self.device)
         dones = torch.FloatTensor(dones).to(self.device)
 
-        # Clip rewards to prevent Q-value explosion
-        rewards = torch.clamp(rewards, -10.0, 10.0)
+        # Clip rewards
+        rewards = torch.clamp(rewards, -20.0, 20.0)
 
         # Current Q-values
         q_values = self.policy_net(states).gather(1, actions.unsqueeze(1)).squeeze(1)
 
         # Double DQN target
         with torch.no_grad():
-            # Select best actions using policy network
             best_actions = self.policy_net(next_states).max(1)[1].unsqueeze(1)
-            # Evaluate using target network
             next_q_values = self.target_net(next_states).gather(1, best_actions).squeeze(1)
             target_q_values = rewards + (1 - dones) * self.gamma * next_q_values
 
-        # Huber loss (more robust than MSE)
+        # Huber loss
         loss = F.smooth_l1_loss(q_values, target_q_values)
 
-        # Optimize with gradient clipping
+        # Optimize
         self.optimizer.zero_grad()
         loss.backward()
-        torch.nn.utils.clip_grad_norm_(self.policy_net.parameters(), 0.5)
+        torch.nn.utils.clip_grad_norm_(self.policy_net.parameters(), 1.0)  # More aggressive clipping
         self.optimizer.step()
 
         # Update target network
@@ -137,13 +133,7 @@ class DQNAgent:
 
     def end_episode(self, episode_reward=0, checkpoints_reached=0, time_remaining=0, finished=False):
         """
-        Called when an episode ends - Track best performance by FINISH TIME
-        
-        Args:
-            episode_reward: Total reward for episode
-            checkpoints_reached: Number of checkpoints crossed
-            time_remaining: Time left when finished (or 0 if didn't finish)
-            finished: Whether the car finished the race
+        Called when an episode ends
         """
         self.episode_count += 1
         
@@ -155,17 +145,15 @@ class DQNAgent:
             self.recent_rewards.pop(0)
             self.recent_checkpoints.pop(0)
         
-        # Track best overall metrics
         if episode_reward > self.best_reward:
             self.best_reward = episode_reward
         
-        # NEW: Track finish times and save best model based on speed!
+        # Track finish times
         if finished:
             self.recent_finish_times.append(time_remaining)
             if len(self.recent_finish_times) > 100:
                 self.recent_finish_times.pop(0)
             
-            # Check if this is the FASTEST finish ever!
             if time_remaining > self.best_finish_time:
                 old_best = self.best_finish_time
                 self.best_finish_time = time_remaining
@@ -180,11 +168,9 @@ class DQNAgent:
                 print(f"  Improvement: {improvement:.2f}s faster")
                 print(f"{'='*80}\n")
         
-        # Update learning rate based on performance
+        # Update learning rate
         if len(self.recent_rewards) >= 100:
             avg_reward = np.mean(self.recent_rewards)
-            
-            # Use average reward for scheduler (more stable than individual episodes)
             self.scheduler.step(avg_reward)
         
         return self.epsilon
@@ -204,16 +190,15 @@ class DQNAgent:
             'train_step': self.train_step,
             'episode_count': self.episode_count,
             'best_reward': self.best_reward,
-            'best_finish_time': self.best_finish_time,  # NEW
-            'best_finish_episode': self.best_finish_episode,  # NEW
+            'best_finish_time': self.best_finish_time,
+            'best_finish_episode': self.best_finish_episode,
             'recent_rewards': self.recent_rewards,
             'recent_checkpoints': self.recent_checkpoints,
-            'recent_finish_times': self.recent_finish_times,  # NEW
+            'recent_finish_times': self.recent_finish_times,
             'replay_buffer': self.replay_buffer.to_dict(),
         }
         tmp = save_path + '.tmp'
         torch.save(checkpoint, tmp)
-        # Windows-safe file replacement with retry
         import time
         for attempt in range(3):
             try:
@@ -258,11 +243,10 @@ class DQNAgent:
             try:
                 self.scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
             except:
-                print("Warning: Could not load scheduler state (likely due to config change)")
+                print("Warning: Could not load scheduler state")
         
         if 'epsilon' in checkpoint:
-            loaded_epsilon = checkpoint['epsilon']
-            self.epsilon = loaded_epsilon
+            self.epsilon = checkpoint['epsilon']
 
         if 'train_step' in checkpoint:
             self.train_step = checkpoint['train_step']
@@ -273,7 +257,6 @@ class DQNAgent:
         if 'best_reward' in checkpoint:
             self.best_reward = checkpoint['best_reward']
         
-        # NEW: Load finish time tracking
         if 'best_finish_time' in checkpoint:
             self.best_finish_time = checkpoint['best_finish_time']
         
@@ -289,12 +272,11 @@ class DQNAgent:
         if 'recent_finish_times' in checkpoint:
             self.recent_finish_times = checkpoint['recent_finish_times']
         else:
-            self.recent_finish_times = []  # Initialize if not in checkpoint
+            self.recent_finish_times = []
 
         if 'replay_buffer' in checkpoint and checkpoint['replay_buffer']:
             self.replay_buffer = replaybuffer_from_dict(checkpoint['replay_buffer'])
 
-        # Get current LR from optimizer
         current_lr = self.optimizer.param_groups[0]['lr']
 
         print(f"Loaded: ε={self.epsilon:.4f}, step={self.train_step}, ep={self.episode_count}, buffer={len(self.replay_buffer)}")
@@ -307,6 +289,6 @@ class DQNAgent:
         if self.recent_checkpoints:
             print(f"Recent avg checkpoints: {np.mean(self.recent_checkpoints):.1f}/25")
         if self.recent_finish_times:
-            print(f"Recent avg finish time: {np.mean(self.recent_finish_times):.2f}s remaining (last 100 finished runs)")
+            print(f"Recent avg finish time: {np.mean(self.recent_finish_times):.2f}s remaining")
         
         return True
