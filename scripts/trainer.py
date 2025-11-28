@@ -347,10 +347,8 @@ class Trainer:
                 wandb.finish()
             except:
                 pass
-        try:
-            pygame.mixer.init()
-        except:
-            pass
+        pygame.mixer.init()
+
         self.initialized = False
         game_state_manager.setState('menu')
     

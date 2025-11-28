@@ -237,23 +237,6 @@ class Environment:
             self.game_state = "running"
             self.handle_music(play=True)
 
-    def draw(self):
-        self.surface.blits((
-            (self.grass, (0, 0)),
-            (self.track, (0, 0)),
-            (self.finish_line, self.finish_line_position),
-        ))
-
-        self.obstacle_group.draw(self.surface)
-        self.surface.blit(self.track_border, (0, 0))
-        self.all_sprites.draw(self.surface)
-
-        if self.game_state == "running":
-            draw_ui(self)
-        elif self.game_state == "finished":
-            draw_finished(self)
-        elif self.game_state == "failed":
-            draw_failed(self)
 
     def restart_game(self):        
         if self.car1_active:

@@ -1,4 +1,8 @@
-# Complete Car.py with dual raycast system
+"""
+CAR.PY - The racing car with physics and sensors
+Handles movement, rotation, and "vision" via raycasting
+Raycasting = shooting invisible lines to detect walls/obstacles (like sonar)
+"""
 
 import math
 import pygame
@@ -12,41 +16,43 @@ class Car(pygame.sprite.Sprite):
         self.position = Vector2(x, y)
         self.car_color = car_color
 
-        # Load and setup car image
+        # Load car image
         self.img = pygame.image.load(CAR_COLORS[car_color]).convert_alpha()
         self.image = pygame.transform.scale(self.img, (19, 38))
         self.original_image = self.image
         self.rect = self.image.get_rect(center=self.position)
-        self.mask = pygame.mask.from_surface(self.image)
+        self.mask = pygame.mask.from_surface(self.image)  # For collision detection
 
-        # Physics
+        # Physics properties
         self.max_velocity = MAXSPEED
         self.velocity = 0
         self.rotation_velocity = ROTATESPEED
         self.angle = 0
         self.acceleration = ACCELERATION
 
-        # State
-        self.failed = False
-        self.can_move = True
+        # State flags
+        self.failed = False      # Crashed into wall
+        self.can_move = True     # Can still move
 
-        # Dual ray system
+        # RAYCAST SYSTEM - Two sets of "sensors"
+        # Wall rays: Detect only walls (for navigation)
+        # Bomb rays: Detect walls AND obstacles (for avoidance)
         self.ray_length = 400
+        
+        # 15 rays spread from -90° to +90° (left to right)
         self.wall_ray_angles = np.array([-90, -60, -45, -30, -20, -15, -10, 0, 10, 15, 20, 30, 45, 60, 90], dtype=np.float32)
         self.bomb_ray_angles = np.array([-90, -60, -45, -30, -20, -15, -10, 0, 10, 15, 20, 30, 45, 60, 90], dtype=np.float32)
         
-        # NumPy arrays for distances
+        # Distance readings (normalized 0-1, where 1 = max distance = safe)
         self.wall_distances = np.full(len(self.wall_ray_angles), self.ray_length, dtype=np.float32)
         self.bomb_distances = np.full(len(self.bomb_ray_angles), self.ray_length, dtype=np.float32)
-        
-        # Track which bomb rays hit obstacles (vs just walls)
         self.bomb_hit_obstacle = np.zeros(len(self.bomb_ray_angles), dtype=bool)
         
-        # Collision points for visualization
+        # For visualization
         self.wall_collision_points = [None] * len(self.wall_ray_angles)
         self.bomb_collision_points = [None] * len(self.bomb_ray_angles)
         
-        # Pre-calculate ray directions
+        # Pre-calculate ray directions for performance
         self.wall_directions = np.array([
             [math.sin(math.radians(-angle)), -math.cos(math.radians(-angle))]
             for angle in self.wall_ray_angles
@@ -58,32 +64,31 @@ class Car(pygame.sprite.Sprite):
         ], dtype=np.float32)
 
     def cast_rays(self, border_mask, obstacle_group=None):
+        """Shoot rays to detect surroundings - called every frame"""
         car_rotation = -self.angle
-        step = 10
+        step = 10  # Check every 10 pixels along ray
         width, height = border_mask.get_size()
         
-        # Cast wall rays (no obstacles)
         self._cast_wall_rays(border_mask, car_rotation, int(step*1.5), width, height)
-        
-        # Cast bomb rays (with obstacles)
         if obstacle_group:
             self._cast_bomb_rays(border_mask, obstacle_group, car_rotation, step, width, height)
     
     def _cast_wall_rays(self, border_mask, car_rotation, step, width, height):
-        """Cast rays that only detect walls"""
+        """Detect walls only"""
         self.wall_distances.fill(self.ray_length)
         
         angle_rad = math.radians(car_rotation)
         cos_a, sin_a = math.cos(angle_rad), math.sin(angle_rad)
         
         for idx, base_dir in enumerate(self.wall_directions):
-            # Rotate direction by car angle
+            # Rotate ray direction by car angle
             ray_dir_x = base_dir[0] * cos_a - base_dir[1] * sin_a
             ray_dir_y = base_dir[0] * sin_a + base_dir[1] * cos_a
             
             min_dist = self.ray_length
             collision_point = None
             
+            # March along ray until we hit something
             for dist in range(step, self.ray_length + 1, step):
                 x = int(self.position.x + ray_dir_x * dist)
                 y = int(self.position.y + ray_dir_y * dist)
@@ -91,7 +96,7 @@ class Car(pygame.sprite.Sprite):
                 if not (0 <= x < width and 0 <= y < height):
                     break
                 
-                if border_mask.get_at((x, y)):
+                if border_mask.get_at((x, y)):  # Hit wall
                     min_dist = dist
                     collision_point = Vector2(x, y)
                     break
@@ -100,7 +105,7 @@ class Car(pygame.sprite.Sprite):
             self.wall_collision_points[idx] = collision_point
     
     def _cast_bomb_rays(self, border_mask, obstacle_group, car_rotation, step, width, height):
-        """Cast rays that detect both walls and bombs"""
+        """Detect walls AND obstacles"""
         self.bomb_distances.fill(self.ray_length)
         self.bomb_hit_obstacle.fill(False)
         
@@ -108,7 +113,6 @@ class Car(pygame.sprite.Sprite):
         cos_a, sin_a = math.cos(angle_rad), math.sin(angle_rad)
         
         for idx, base_dir in enumerate(self.bomb_directions):
-            # Rotate direction
             ray_dir_x = base_dir[0] * cos_a - base_dir[1] * sin_a
             ray_dir_y = base_dir[0] * sin_a + base_dir[1] * cos_a
             
@@ -123,7 +127,7 @@ class Car(pygame.sprite.Sprite):
                 if not (0 <= x < width and 0 <= y < height):
                     break
                 
-                # Check obstacles FIRST
+                # Check obstacles first (they're closer threats)
                 for obstacle in obstacle_group:
                     if obstacle.rect.collidepoint(x, y):
                         min_dist = dist
@@ -133,8 +137,7 @@ class Car(pygame.sprite.Sprite):
                 if hit_obstacle:
                     break
                 
-                # Check wall
-                if border_mask.get_at((x, y)):
+                if border_mask.get_at((x, y)):  # Hit wall
                     min_dist = dist
                     collision_point = Vector2(x, y)
                     break
@@ -144,8 +147,7 @@ class Car(pygame.sprite.Sprite):
             self.bomb_collision_points[idx] = collision_point
 
     def draw_rays(self, surface):
-        """Draw both wall rays (green) and bomb rays (yellow)"""
-        # Draw wall rays in green
+        """Visualize rays - green for walls, yellow for bombs"""
         for collision_point in self.wall_collision_points:
             if collision_point:
                 pygame.draw.line(surface, GREEN, 
@@ -154,7 +156,6 @@ class Car(pygame.sprite.Sprite):
                 pygame.draw.circle(surface, GREEN, 
                                  (int(collision_point.x), int(collision_point.y)), 2)
         
-        # Draw bomb rays in yellow
         for collision_point in self.bomb_collision_points:
             if collision_point:
                 pygame.draw.line(surface, YELLOW, 
@@ -164,6 +165,7 @@ class Car(pygame.sprite.Sprite):
                                  (int(collision_point.x), int(collision_point.y)), 2)
 
     def rotate(self, left=False, right=False):
+        """Turn the car"""
         if not self.can_move:
             return
         if left:
@@ -171,6 +173,7 @@ class Car(pygame.sprite.Sprite):
         elif right:
             self.angle -= self.rotation_velocity
 
+        # Update image rotation
         self.image = pygame.transform.rotate(self.original_image, self.angle)
         old_center = self.rect.center
         self.rect = self.image.get_rect()
@@ -179,6 +182,7 @@ class Car(pygame.sprite.Sprite):
             self.mask = pygame.mask.from_surface(self.image)
 
     def move(self):
+        """Move car forward based on velocity and angle"""
         if not self.can_move:
             return
         radians = math.radians(self.angle)
@@ -187,6 +191,7 @@ class Car(pygame.sprite.Sprite):
         self.rect.center = self.position
 
     def accelerate(self, forward=True):
+        """Speed up or slow down"""
         if not self.can_move:
             return
         if forward:
@@ -196,6 +201,7 @@ class Car(pygame.sprite.Sprite):
         self.move()
 
     def reduce_speed(self):
+        """Gradually slow down when not accelerating"""
         if not self.can_move:
             return
         if self.velocity > 0:
@@ -205,6 +211,7 @@ class Car(pygame.sprite.Sprite):
         self.move()
 
     def reset(self, x=None, y=None):
+        """Reset car to starting position"""
         if x is not None and y is not None:
             self.position = Vector2(x, y)
         self.velocity = 0
@@ -215,7 +222,7 @@ class Car(pygame.sprite.Sprite):
         self.rect = self.image.get_rect(center=self.position)
         self.mask = pygame.mask.from_surface(self.image)
         
-        # Reset both ray systems
+        # Reset sensors
         self.wall_distances.fill(self.ray_length)
         self.bomb_distances.fill(self.ray_length)
         self.bomb_hit_obstacle.fill(False)

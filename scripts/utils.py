@@ -219,3 +219,22 @@ class MenuScreen:
         button = Button(pygame.Rect(x, y, width, self.UI_CONSTANTS['BUTTON_HEIGHT']), text, action, self.font, self.menu, bg_color)
         self.buttons.append(button)
         return button
+    
+    def draw_styled_button(self, surface, btn, selected, highlight_color=None):
+        """Draw a button with selection state"""
+        if selected:
+            bg = highlight_color or (100, 150, 255)
+        else:
+            bg = btn.bg_color if btn.bg_color else (70, 70, 70)
+        
+        if btn.selected:  # Mouse hover
+            bg = tuple(min(c + 30, 255) for c in bg)
+        
+        pygame.draw.rect(surface, bg, btn.rect, border_radius=btn.border_radius)
+        
+        border_color = (255, 255, 255) if selected else (200, 200, 200)
+        border_width = 3 if selected else 2
+        pygame.draw.rect(surface, border_color, btn.rect, border_width, border_radius=btn.border_radius)
+        
+        text_surf = btn.font.render(btn.text, True, (255, 255, 255))
+        surface.blit(text_surf, text_surf.get_rect(center=btn.rect.center))

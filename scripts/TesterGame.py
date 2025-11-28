@@ -35,11 +35,8 @@ class TesterGame:
             return
         
         print(f"\nLoading AI model...")
-        try:
-            pygame.mixer.quit()
-        except:
-            pass
-        
+        pygame.mixer.quit()
+    
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         
         # Load single agent once
@@ -114,7 +111,7 @@ class TesterGame:
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     self.test_running = False
-                    game_state_manager.setState('tester_menu')
+                    game_state_manager.setState('tester_settings')
                     return
                 elif event.key == pygame.K_r:  # Restart current test
                     self.start_test()

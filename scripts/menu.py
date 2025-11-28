@@ -1,300 +1,175 @@
 import pygame
 import sys
 from scripts.Constants import *
-from scripts.utils import MenuScreen, calculate_ui_constants
+from scripts.utils import Button, calculate_ui_constants
 from scripts.GameManager import game_state_manager
 from pathlib import Path
 
 
-class Menu:
-    def __init__(self, screen, clock):
-        pygame.font.init()
+class BaseMenuScreen:
+    """Base class for all menu screens"""
+    
+    def __init__(self, screen, title="Menu"):
         self.screen = screen
-        self.clock = clock
-        self.UI_CONSTANTS = calculate_ui_constants((WIDTH, HEIGHT))
-
-        # Background
-        self.background = pygame.transform.scale(pygame.image.load(MENU), (WIDTH, HEIGHT))
-
-        # Initialize menus
-        self.main_menu = MainMenuScreen(self)
-        self.settings_menu = RaceSettingsScreen(self)
-        self.tester_menu = TesterSettingsScreen(self)  # NEW
-        self.active_menu = self.main_menu
-        self.main_menu.enable()
-
-    def show_settings_menu(self):
-        self.main_menu.disable()
-        self.settings_menu.enable()
-        self.active_menu = self.settings_menu
-
-    def show_tester_menu(self):  # NEW
-        self.main_menu.disable()
-        self.tester_menu.enable()
-        self.active_menu = self.tester_menu
-
-    def return_to_main(self):
-        self.settings_menu.disable()
-        self.tester_menu.disable()  # NEW
-        self.main_menu.enable()
-        self.active_menu = self.main_menu
-
-    def start_game(self):
-        game_state_manager.setState('game')
-
-    def start_training(self):
-        game_state_manager.training_mode = True
-        game_state_manager.setState('training')
-
-    def start_tester(self):  # NEW
-       game_state_manager.setState('tester')
-
-    def quit_game(self):
-        pygame.time.delay(300)
-        pygame.quit()
-        sys.exit()
-
-    def run(self):
-        self.screen.blit(self.background, (0, 0))
-
-        events = pygame.event.get()
-        for event in events:
-            if event.type == pygame.QUIT:
-                self.quit_game()
-            if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
-                if self.active_menu in [self.settings_menu, self.tester_menu]:
-                    self.return_to_main()
-
-        self.clock.tick(FPS/2)
-        self.active_menu.update(events)
-        self.active_menu.draw(self.screen)
-
-
-class MainMenuScreen(MenuScreen):
+        self.title = title
+        self.UI = calculate_ui_constants((WIDTH, HEIGHT))
+        self.font = pygame.font.Font(MENUFONT, 40)
+        self.title_font = pygame.font.Font(MENUFONT, 70)
+        self.buttons = []
+        self.initialize()
+    
     def initialize(self):
-        self.title = "RACING GAME"
-        self.clear_buttons()
-
-        # Center layout
-        cx = self.screen.get_width() // 2
-        start_y = int(self.screen.get_height() * 0.3)
-        width = int(self.screen.get_width() * 0.25)
-        spacing = self.UI_CONSTANTS['BUTTON_HEIGHT'] + self.UI_CONSTANTS['BUTTON_SPACING']
-
-        # Create buttons
-        buttons = [
-            ('PLAY', self.menu.show_settings_menu, None),
-            ('TRAIN AI', self.menu.start_training, (70, 100, 180)),
-            ('TEST AI', self.menu.show_tester_menu, (180, 100, 70)),  # NEW - Orange color
-            ('QUIT', self.menu.quit_game, (200, 50, 50))
-        ]
-
-        for i, (text, action, color) in enumerate(buttons):
-            self.create_button(text, action, cx - width // 2, start_y + i * spacing, width, color)
-
-
-class TesterSettingsScreen(MenuScreen):
-    """New menu screen for AI tester settings"""
-    def __init__(self, menu):
-        super().__init__(menu, "AI Performance Test")
-        self.info_font = pygame.font.Font(MENUFONT, int(self.screen.get_height() * 0.02))
-        self.header_font = pygame.font.Font(MENUFONT, int(self.screen.get_height() * 0.025))
+        pass
+    
+    def create_button(self, text, action, x, y, width=None, bg_color=None, image=None):
+        if width is None:
+            text_surf = self.font.render(text, True, WHITE)
+            width = max(text_surf.get_width() + self.UI['BUTTON_TEXT_PADDING'], 
+                       self.UI['BUTTON_MIN_WIDTH'])
         
-        # Tester settings
-        self.num_cars = 10
-        self.min_cars = 1
-        self.max_cars = 100
-        
-        # Button groups
-        self.preset_buttons = []
-        self.start_button = None
-        self.back_button = None
-
-    def initialize(self):
-        self.title = "AI Performance Test"
-        self.clear_buttons()
-        self.preset_buttons.clear()
-
-        # Layout
-        w, h = self.screen.get_size()
-        cx = w // 2
-        
-        btn_width = int(w * 0.12)
-        spacing = self.UI_CONSTANTS['BUTTON_HEIGHT'] + int(self.UI_CONSTANTS['BUTTON_SPACING'] * 0.8)
-        
-        # Preset buttons (horizontal layout)
-        presets = [1, 5, 10, 25, 50, 100]
-        preset_y = int(h * 0.35)
-        total_preset_width = len(presets) * btn_width + (len(presets) - 1) * 20
-        start_x = cx - total_preset_width // 2
-        
-        for i, num in enumerate(presets):
-            x = start_x + i * (btn_width + 20)
-            btn = self.create_button(
-                str(num), 
-                lambda n=num: self._set_car_count(n),
-                x, 
-                preset_y, 
-                btn_width,
-                (70, 100, 180)
-            )
-            self.preset_buttons.append(btn)
-              
-        # Start button
-        self.start_button = self.create_button(
-            "Test", 
-            self._start_test, 
-            cx - 150, 
-            int(h * 0.85), 
-            300, 
-            (70, 180, 70)
+        btn = Button(
+            pygame.Rect(x, y, width, self.UI['BUTTON_HEIGHT']),
+            text, action, self.font, self, bg_color
         )
-        
-        # Back button
-        back_x = int(w * 0.02)
-        back_y = int(h * 0.02)
-        back_width = int(w * 0.08)
-        self.back_button = self.create_button(
-            "←", 
-            self.menu.return_to_main, 
-            back_x, 
-            back_y, 
-            back_width
-        )
-
-    def _set_car_count(self, num):
-        """Set car count to specific preset"""
-        self.num_cars = max(self.min_cars, min(num, self.max_cars))
-
-    def _start_test(self):
-        """Start the tester with current settings"""
-        game_state_manager.tester_num_cars = self.num_cars
-        self.menu.start_tester()
-
-    def draw(self, surface):
-        if not self.enabled:
-            return
-
-        # Title
+        btn.image = image  # Optional image for car buttons
+        btn.disabled = False  # Disabled state
+        self.buttons.append(btn)
+        return btn
+    
+    def draw_title(self):
         title = self.title_font.render(self.title, True, COLORS["title"])
-        shadow = self.title_font.render(self.title, True, (0, 0, 0))
-        cx = (surface.get_width() - title.get_width()) // 2
-        ty = int(surface.get_height() * 0.05)
-        surface.blit(shadow, (cx + 4, ty + 4))
-        surface.blit(title, (cx, ty))
-
-        # Instructions
-        w, h = surface.get_size()
-        instructions = [
-            "Select number of AI cars to test performance",
-            "All cars will race simultaneously using trained AI model",
-            f"Model will use epsilon = 0.0 (pure exploitation)"
-        ]
-        
-        y = int(h * 0.18)
-        for line in instructions:
-            text = self.info_font.render(line, True, (200, 200, 200))
-            surface.blit(text, text.get_rect(center=(w//2, y)))
-            y += 30
-
-        # Section label
-        label_y = int(h * 0.28)
-        label = self.header_font.render("Preset Amounts", True, (255, 255, 255))
-        surface.blit(label, label.get_rect(center=(w//2, label_y)))
-
-        # Current car count display (big and centered)
-        count_y = int(h * 0.55)
-        count_text = f"{self.num_cars} Cars"
-        count_font = pygame.font.Font(MENUFONT, int(h * 0.08))
-        count_surf = count_font.render(count_text, True, (255, 215, 0))
-        count_shadow = count_font.render(count_text, True, (0, 0, 0))
-        
-        count_cx = w // 2
-        surface.blit(count_shadow, count_shadow.get_rect(center=(count_cx + 3, count_y + 3)))
-        surface.blit(count_surf, count_surf.get_rect(center=(count_cx, count_y)))
-
-
-        # Draw all buttons with highlighting for selected preset
-        for i, btn in enumerate(self.preset_buttons):
-            preset_value = [1, 5, 10, 25, 50, 100][i]
-            selected = self.num_cars == preset_value
-            self._draw_button(surface, btn, selected)
-
-        # Draw other buttons normally
-        for btn in self.buttons:
-            if btn not in self.preset_buttons:
-                btn.draw(surface)
-
-    def _draw_button(self, surface, btn, selected):
-        """Draw a styled button with selection state"""
-        if selected:
-            bg = (100, 150, 255)  # Bright blue when selected
+        shadow = self.title_font.render(self.title, True, BLACK)
+        cx = (self.screen.get_width() - title.get_width()) // 2
+        ty = int(self.screen.get_height() * 0.05)
+        self.screen.blit(shadow, (cx + 4, ty + 4))
+        self.screen.blit(title, (cx, ty))
+    
+    def draw_button(self, btn, selected=False, highlight_color=None):
+        """Universal button drawing - handles all states"""
+        # Background color
+        if btn.disabled:
+            bg = (40, 40, 40)
+        elif selected:
+            bg = highlight_color or (100, 150, 255)
         else:
-            bg = btn.bg_color if btn.bg_color else (70, 70, 70)
+            bg = btn.bg_color or (70, 70, 70)
         
-        if btn.selected:  # Mouse hover
+        # Hover brightening (only if not disabled)
+        if btn.selected and not btn.disabled:
             bg = tuple(min(c + 30, 255) for c in bg)
         
-        pygame.draw.rect(surface, bg, btn.rect, border_radius=btn.border_radius)
+        # Draw background
+        pygame.draw.rect(self.screen, bg, btn.rect, border_radius=btn.border_radius)
         
-        border_color = (255, 255, 255) if selected else (200, 200, 200)
+        # Border
+        border_color = WHITE if selected and not btn.disabled else (200, 200, 200)
         border_width = 3 if selected else 2
-        pygame.draw.rect(surface, border_color, btn.rect, border_width, border_radius=btn.border_radius)
+        pygame.draw.rect(self.screen, border_color, btn.rect, border_width, 
+                        border_radius=btn.border_radius)
         
-        text_surf = btn.font.render(btn.text, True, (255, 255, 255))
-        surface.blit(text_surf, text_surf.get_rect(center=btn.rect.center))
-
-    def update(self, events):
-        """Handle input"""
-        if not self.enabled:
-            return
-
+        # Content: image or text
+        if btn.image:
+            img_rect = btn.image.get_rect(center=btn.rect.center)
+            self.screen.blit(btn.image, img_rect)
+        elif btn.text:
+            text_color = (100, 100, 100) if btn.disabled else WHITE
+            text_surf = btn.font.render(btn.text, True, text_color)
+            self.screen.blit(text_surf, text_surf.get_rect(center=btn.rect.center))
+        
+        # Disabled overlay with X
+        if btn.disabled:
+            # X marks
+            pad = 8
+            x1, y1 = btn.rect.left + pad, btn.rect.top + pad
+            x2, y2 = btn.rect.right - pad, btn.rect.bottom - pad
+            pygame.draw.line(self.screen, (200, 50, 50), (x1, y1), (x2, y2), 3)
+            pygame.draw.line(self.screen, (200, 50, 50), (x1, y2), (x2, y1), 3)
+    
+    def handle_events(self):
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                self.on_escape()
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                for btn in self.buttons:
+                    if btn.selected and not btn.disabled:
+                        btn.action()
+                        return
+    
+    def on_escape(self):
+        pass
+    
+    def update(self):
         mouse_pos = pygame.mouse.get_pos()
         for btn in self.buttons:
             btn.update_hover_state(mouse_pos)
+    
+    def draw(self):
+        self.draw_title()
+        for btn in self.buttons:
+            self.draw_button(btn)
+    
+    def run(self):
+        self.handle_events()
+        self.update()
+        self.draw()
+
+
+class MainMenu(BaseMenuScreen):
+    
+    def __init__(self, screen):
+        super().__init__(screen, "RACING GAME")
+    
+    def initialize(self):
+        cx = self.screen.get_width() // 2
+        start_y = int(self.screen.get_height() * 0.3)
+        width = int(self.screen.get_width() * 0.25)
+        spacing = self.UI['BUTTON_HEIGHT'] + self.UI['BUTTON_SPACING']
         
-        for event in events:
-            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                for btn in self.buttons:
-                    if btn.selected:
-                        btn.action()
-                        return
-
-
-class RaceSettingsScreen(MenuScreen):
-    def __init__(self, menu):
-        super().__init__(menu, "Race Settings")
-        self.car_images = self._load_car_images()
-        self.info_font = pygame.font.Font(MENUFONT, int(self.screen.get_height() * 0.02))
-        self.header_font = pygame.font.Font(MENUFONT, int(self.screen.get_height() * 0.025))
+        buttons = [
+            ('PLAY', lambda: game_state_manager.setState('settings'), None),
+            ('TRAIN AI', lambda: game_state_manager.setState('training'), (70, 100, 180)),
+            ('TEST AI', lambda: game_state_manager.setState('tester_settings'), (180, 100, 70)),
+            ('QUIT', self._quit, (200, 50, 50))
+        ]
         
-        # Button groups
-        self.player1_buttons = []
-        self.player2_buttons = []
-        self.p1_car_buttons = []
-        self.p2_car_buttons = []
+        for i, (text, action, color) in enumerate(buttons):
+            self.create_button(text, action, cx - width // 2, start_y + i * spacing, width, color)
+    
+    def _quit(self):
+        pygame.quit()
+        sys.exit()
 
-    def _load_car_images(self):
-        """Load car images once"""
-        images = {}
-        for color in CAR_COLORS_LIST:
+
+class RaceSettingsMenu(BaseMenuScreen):
+    
+    def __init__(self, screen):
+        self.car_images = {}
+        self.p1_type_btns = []
+        self.p2_type_btns = []
+        self.p1_car_btns = []
+        self.p2_car_btns = []
+        self.info_font = pygame.font.Font(MENUFONT, int(screen.get_height() * 0.02))
+        super().__init__(screen, "Race Settings")
+    
+    def _load_car_image(self, color):
+        if color not in self.car_images:
             path = Path(CAR_COLORS[color])
             if path.exists():
                 img = pygame.image.load(path)
                 img = pygame.transform.rotate(img, 90)
-                img = pygame.transform.scale(img, (50, 100))
-                images[color] = pygame.transform.scale(img, (100, 50))
-        return images
-
+                self.car_images[color] = pygame.transform.scale(img, (100, 50))
+        return self.car_images.get(color)
+    
     def initialize(self):
-        self.title = "Race Settings"
-        self.clear_buttons()
-        self.player1_buttons.clear()
-        self.player2_buttons.clear()
-        self.p1_car_buttons.clear()
-        self.p2_car_buttons.clear()
-
-        # Layout
+        self.buttons.clear()
+        self.p1_type_btns.clear()
+        self.p2_type_btns.clear()
+        self.p1_car_btns.clear()
+        self.p2_car_btns.clear()
+        
         w, h = self.screen.get_size()
         cx = w // 2
         col_offset = int(w * 0.12)
@@ -308,224 +183,232 @@ class RaceSettingsScreen(MenuScreen):
         car_width = int(w * 0.1)
         
         top = int(h * 0.20)
-        spacing = self.UI_CONSTANTS['BUTTON_HEIGHT'] + int(self.UI_CONSTANTS['BUTTON_SPACING'] * 0.8)
-
+        spacing = self.UI['BUTTON_HEIGHT'] + int(self.UI['BUTTON_SPACING'] * 0.8)
+        
         # Player type buttons
         for i, ptype in enumerate(["Human", "DQN"]):
             y = top + (i + 1) * spacing
-            b1 = self.create_button(ptype, lambda pt=ptype: self._toggle_player1(pt), p1_x - btn_width//2, y, btn_width)
-            b2 = self.create_button(ptype, lambda pt=ptype: self._toggle_player2(pt), p2_x - btn_width//2, y, btn_width)
-            self.player1_buttons.append(b1)
-            self.player2_buttons.append(b2)
-
-        # Car color buttons
+            b1 = self.create_button(ptype, lambda pt=ptype: self._toggle_p1(pt), 
+                                   p1_x - btn_width//2, y, btn_width)
+            b2 = self.create_button(ptype, lambda pt=ptype: self._toggle_p2(pt), 
+                                   p2_x - btn_width//2, y, btn_width)
+            self.p1_type_btns.append(b1)
+            self.p2_type_btns.append(b2)
+        
+        # Car buttons with images
         for i, color in enumerate(CAR_COLORS_LIST):
             y = top + (i + 1) * spacing
-            b1 = self.create_button("", lambda c=color: self._select_p1_car(c), p1_car_x - car_width//2, y, car_width)
-            b2 = self.create_button("", lambda c=color: self._select_p2_car(c), p2_car_x - car_width//2, y, car_width)
-            self.p1_car_buttons.append((b1, color))
-            self.p2_car_buttons.append((b2, color))
-
-        # Start button (center bottom)
-        self.create_button("Start", self._start_race, cx - 150, int(h * 0.85), 300, COLORS["start"])
+            img = self._load_car_image(color)
+            b1 = self.create_button("", lambda c=color: self._select_p1_car(c), 
+                                   p1_car_x - car_width//2, y, car_width, image=img)
+            b2 = self.create_button("", lambda c=color: self._select_p2_car(c), 
+                                   p2_car_x - car_width//2, y, car_width, image=img)
+            b1.color_name = color
+            b2.color_name = color
+            self.p1_car_btns.append(b1)
+            self.p2_car_btns.append(b2)
         
-        # Back button (top left with arrow)
-        back_x = int(w * 0.02)
-        back_y = int(h * 0.02)
-        back_width = int(w * 0.08)
-        self.create_button("←", self.menu.return_to_main, back_x, back_y, back_width)
-
-    # === Player selection ===
+        # Start and back
+        self.create_button("Start", self._start, cx - 150, int(h * 0.85), 300, COLORS["start"])
+        self.create_button("←", lambda: game_state_manager.setState('menu'), 
+                          int(w * 0.02), int(h * 0.02), int(w * 0.08))
     
-    def _toggle_player1(self, player_type):
+    def _toggle_p1(self, ptype):
         current = game_state_manager.player1_selection
-        game_state_manager.player1_selection = None if current == player_type else player_type
-
-    def _toggle_player2(self, player_type):
+        game_state_manager.player1_selection = None if current == ptype else ptype
+    
+    def _toggle_p2(self, ptype):
         current = game_state_manager.player2_selection
-        game_state_manager.player2_selection = None if current == player_type else player_type
-
+        game_state_manager.player2_selection = None if current == ptype else ptype
+    
     def _select_p1_car(self, color):
         if color != game_state_manager.player2_car_color:
             game_state_manager.player1_car_color = color
-
+    
     def _select_p2_car(self, color):
         if color != game_state_manager.player1_car_color:
             game_state_manager.player2_car_color = color
-
-    def _start_race(self):
-        if game_state_manager.player1_selection or game_state_manager.player2_selection:
-            self.menu.start_game()
-
-    # === Drawing - SIMPLIFIED ===
     
-    def draw(self, surface):
-        if not self.enabled:
-            return
-
-        # Title
-        title = self.title_font.render(self.title, True, COLORS["title"])
-        shadow = self.title_font.render(self.title, True, (0, 0, 0))
-        cx = (surface.get_width() - title.get_width()) // 2
-        ty = int(surface.get_height() * 0.05)
-        surface.blit(shadow, (cx + 4, ty + 4))
-        surface.blit(title, (cx, ty))
-
-        # Section labels
-        self._draw_labels(surface)
+    def _start(self):
+        if game_state_manager.player1_selection or game_state_manager.player2_selection:
+            game_state_manager.setState('game')
+    
+    def on_escape(self):
+        game_state_manager.setState('menu')
+    
+    def update(self):
+        super().update()
+        # Update disabled states for car buttons
+        for btn in self.p1_car_btns:
+            btn.disabled = btn.color_name == game_state_manager.player2_car_color
+        for btn in self.p2_car_btns:
+            btn.disabled = btn.color_name == game_state_manager.player1_car_color
+    
+    def draw(self):
+        self.draw_title()
+        self._draw_labels()
         
-        # All buttons
-        self._draw_player_buttons(surface)
-        self._draw_car_buttons(surface)
+        # Player type buttons
+        ptypes = ["Human", "DQN"]
+        for i, btn in enumerate(self.p1_type_btns):
+            selected = game_state_manager.player1_selection == ptypes[i]
+            self.draw_button(btn, selected, COLORS["p1"])
+        for i, btn in enumerate(self.p2_type_btns):
+            selected = game_state_manager.player2_selection == ptypes[i]
+            self.draw_button(btn, selected, COLORS["p2"])
         
-        # Start/Back buttons
+        # Car buttons
+        for btn in self.p1_car_btns:
+            selected = btn.color_name == game_state_manager.player1_car_color
+            self.draw_button(btn, selected, COLORS["p1"])
+        for btn in self.p2_car_btns:
+            selected = btn.color_name == game_state_manager.player2_car_color
+            self.draw_button(btn, selected, COLORS["p2"])
+        
+        # Start and back
         for btn in self.buttons[-2:]:
-            btn.draw(surface)
+            self.draw_button(btn)
         
-        # Control panels
-        self._draw_controls(surface)
-
-    def _draw_labels(self, surface):
-        """Draw column headers"""
-        w = surface.get_width()
+        self._draw_controls()
+    
+    def _draw_labels(self):
+        w = self.screen.get_width()
         cx = w // 2
         col_offset = int(w * 0.12)
         car_offset = int(w * 0.16)
-        y = int(surface.get_height() * 0.22)
-
+        y = int(self.screen.get_height() * 0.22)
+        
         labels = [
-            ("Player 1", cx - col_offset, COLORS["p1"]),
-            ("Player 2", cx + col_offset, COLORS["p2"]),
+            ("Player1", cx - col_offset, COLORS["p1"]),
+            ("Player2", cx + col_offset, COLORS["p2"]),
             ("Car", cx - car_offset - col_offset, COLORS["p1"]),
             ("Car", cx + car_offset + col_offset, COLORS["p2"])
         ]
-
+        
         for text, x, color in labels:
             surf = self.font.render(text, True, color)
-            rect = surf.get_rect(center=(x, y))
-            surface.blit(surf, rect)
-
-    def _draw_player_buttons(self, surface):
-        """Draw player type selection buttons"""
-        for i, btn in enumerate(self.player1_buttons):
-            ptype = ["Human", "DQN"][i]
-            selected = game_state_manager.player1_selection == ptype
-            self._draw_button(surface, btn, selected, COLORS["p1"])
-
-        for i, btn in enumerate(self.player2_buttons):
-            ptype = ["Human", "DQN"][i]
-            selected = game_state_manager.player2_selection == ptype
-            self._draw_button(surface, btn, selected, COLORS["p2"])
-
-    def _draw_button(self, surface, btn, selected, color):
-        """Draw a styled button"""
-        bg = color if selected else COLORS["inactive"]
-        pygame.draw.rect(surface, bg, btn.rect)
-        pygame.draw.rect(surface, COLORS["border"], btn.rect, 2)
-        
-        text_color = (255, 255, 255) if selected else (180, 180, 180)
-        text = btn.font.render(btn.text, True, text_color)
-        surface.blit(text, text.get_rect(center=btn.rect.center))
-
-    def _draw_car_buttons(self, surface):
-        """Draw car selection buttons with car images"""
-        for btn, color in self.p1_car_buttons:
-            selected = game_state_manager.player1_car_color == color
-            disabled = game_state_manager.player2_car_color == color
-            self._draw_car_btn(surface, btn, color, selected, disabled)
-
-        for btn, color in self.p2_car_buttons:
-            selected = game_state_manager.player2_car_color == color
-            disabled = game_state_manager.player1_car_color == color
-            self._draw_car_btn(surface, btn, color, selected, disabled)
-
-    def _draw_car_btn(self, surface, btn, color, selected, disabled):
-        """Draw single car button"""
-        bg = COLORS["button_bg"] if selected else COLORS["inactive"]
-        pygame.draw.rect(surface, bg, btn.rect)
-        
-        if disabled:
-            overlay = pygame.Surface((btn.rect.width, btn.rect.height))
-            overlay.set_alpha(200)
-            overlay.fill((51, 51, 51))
-            surface.blit(overlay, btn.rect.topleft)
-        
-        pygame.draw.rect(surface, COLORS["border"], btn.rect, 2)
-        
-        if color in self.car_images:
-            img_rect = self.car_images[color].get_rect(center=btn.rect.center)
-            surface.blit(self.car_images[color], img_rect)
-
-    def _draw_controls(self, surface):
-        """Draw control panels for active players"""
-        w, h = surface.get_size()
+            self.screen.blit(surf, surf.get_rect(center=(x, y)))
+    
+    def _draw_controls(self):
+        w, h = self.screen.get_size()
         y = int(h * 0.5)
         
         if game_state_manager.player1_selection:
-            self._draw_control_panel(surface, int(w * 0.08), y, True)
-        
+            self._draw_control_panel(int(w * 0.08), y, True)
         if game_state_manager.player2_selection:
-            self._draw_control_panel(surface, int(w * 0.92), y, False)
-
-    def _draw_control_panel(self, surface, x, y, is_p1):
-        """Draw control info panel"""
-        controls = {
-            True: {'Forward': 'W', 'Backward': 'S', 'Left': 'A', 'Right': 'D'},
-            False: {'Forward': 'Up', 'Backward': 'Down', 'Left': 'Left', 'Right': 'Right'}
-        }
-        
-        ctrl = controls[is_p1]
+            self._draw_control_panel(int(w * 0.92), y, False)
+    
+    def _draw_control_panel(self, x, y, is_p1):
+        ctrl = ({'Forward': 'W', 'Backward': 'S', 'Left': 'A', 'Right': 'D'} if is_p1 
+                else {'Forward': 'Up', 'Backward': 'Down', 'Left': 'Left', 'Right': 'Right'})
         color = COLORS["p1"] if is_p1 else COLORS["p2"]
         
-        # Panel box
         box = pygame.Rect(x - 100, y - 125, 200, 250)
         
-        # Layered backdrop
+        # Background layers
         for i in range(3):
             bg = pygame.Surface((200 - i*2, 250 - i*2))
             bg.set_alpha(100 - i*20)
             bg.fill(color)
-            surface.blit(bg, (box.x + i, box.y + i))
+            self.screen.blit(bg, (box.x + i, box.y + i))
         
-        pygame.draw.rect(surface, COLORS["border"], box, 3)
+        pygame.draw.rect(self.screen, COLORS["border"], box, 3)
         
-        # Title
         title = self.info_font.render("Controls", True, COLORS["button_bg"])
-        surface.blit(title, title.get_rect(center=(x, box.y + 25)))
+        self.screen.blit(title, title.get_rect(center=(x, box.y + 25)))
         
-        # Keys
         small_font = pygame.font.Font(MENUFONT, 12)
         for i, (action, key) in enumerate(ctrl.items()):
             ky = box.y + 80 + i * 45
             
-            # Action label
             action_text = small_font.render(action, True, COLORS["button_bg"])
-            surface.blit(action_text, action_text.get_rect(center=(x - 45, ky)))
+            self.screen.blit(action_text, action_text.get_rect(center=(x - 45, ky)))
             
-            # Key box
             key_rect = pygame.Rect(x + 15, ky - 17, 60, 35)
             key_bg = pygame.Surface((60, 35))
             key_bg.set_alpha(160)
             key_bg.fill(color)
-            surface.blit(key_bg, key_rect)
-            pygame.draw.rect(surface, COLORS["border"], key_rect, 2)
+            self.screen.blit(key_bg, key_rect)
+            pygame.draw.rect(self.screen, COLORS["border"], key_rect, 2)
             
-            # Key text
             key_text = small_font.render(key, True, COLORS["button_bg"])
-            surface.blit(key_text, key_text.get_rect(center=(x + 45, ky)))
+            self.screen.blit(key_text, key_text.get_rect(center=(x + 45, ky)))
 
-    def update(self, events):
-        """Handle input"""
-        if not self.enabled:
-            return
 
-        mouse_pos = pygame.mouse.get_pos()
-        for btn in self.buttons:
-            btn.update_hover_state(mouse_pos)
+class TesterSettingsMenu(BaseMenuScreen):
+    
+    def __init__(self, screen):
+        self.num_cars = 10
+        self.preset_btns = []
+        self.header_font = pygame.font.Font(MENUFONT, int(screen.get_height() * 0.025))
+        self.info_font = pygame.font.Font(MENUFONT, int(screen.get_height() * 0.02))
+        self.count_font = pygame.font.Font(MENUFONT, int(screen.get_height() * 0.08))
+        super().__init__(screen, "AI Performance Test")
+    
+    def initialize(self):
+        self.buttons.clear()
+        self.preset_btns.clear()
         
-        for event in events:
-            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                for btn in self.buttons:
-                    if btn.selected:
-                        btn.action()
-                        return
+        w, h = self.screen.get_size()
+        cx = w // 2
+        btn_width = int(w * 0.12)
+        
+        presets = [1, 5, 10, 25, 50, 100]
+        preset_y = int(h * 0.35)
+        total_width = len(presets) * btn_width + (len(presets) - 1) * 20
+        start_x = cx - total_width // 2
+        
+        for i, num in enumerate(presets):
+            x = start_x + i * (btn_width + 20)
+            btn = self.create_button(str(num), lambda n=num: self._set_count(n),
+                                    x, preset_y, btn_width, (70, 100, 180))
+            btn.preset_value = num
+            self.preset_btns.append(btn)
+        
+        self.create_button("Test", self._start_test, cx - 150, int(h * 0.85), 300, (70, 180, 70))
+        self.create_button("←", lambda: game_state_manager.setState('menu'),
+                          int(w * 0.02), int(h * 0.02), int(w * 0.08))
+    
+    def _set_count(self, num):
+        self.num_cars = num
+    
+    def _start_test(self):
+        game_state_manager.tester_num_cars = self.num_cars
+        game_state_manager.setState('tester')
+    
+    def on_escape(self):
+        game_state_manager.setState('menu')
+    
+    def draw(self):
+        self.draw_title()
+        
+        w, h = self.screen.get_size()
+        
+        # Instructions
+        for i, line in enumerate([
+            "Select number of AI cars to test performance",
+            "All cars will race simultaneously using trained AI model",
+        ]):
+            text = self.info_font.render(line, True, (200, 200, 200))
+            self.screen.blit(text, text.get_rect(center=(w//2, int(h * 0.18) + i * 30)))
+        
+        # Section label
+        label = self.header_font.render("Preset Amounts", True, WHITE)
+        self.screen.blit(label, label.get_rect(center=(w//2, int(h * 0.28))))
+        
+        # Car count display
+        count_y = int(h * 0.55)
+        count_text = f"{self.num_cars} Cars"
+        count_shadow = self.count_font.render(count_text, True, BLACK)
+        count_surf = self.count_font.render(count_text, True, GOLD)
+        self.screen.blit(count_shadow, count_shadow.get_rect(center=(w//2 + 3, count_y + 3)))
+        self.screen.blit(count_surf, count_surf.get_rect(center=(w//2, count_y)))
+        
+        # Preset buttons
+        for btn in self.preset_btns:
+            selected = self.num_cars == btn.preset_value
+            self.draw_button(btn, selected)
+        
+        # Start and back
+        for btn in self.buttons[-2:]:
+            self.draw_button(btn)
