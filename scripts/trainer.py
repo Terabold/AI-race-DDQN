@@ -11,7 +11,7 @@ from collections import deque
 from scripts.AIEnvironment import AIEnvironment
 from scripts.Constants import *
 from scripts.dqn_agent import DQNAgent
-from scripts.TrainingUtils import calculate_reward
+from scripts.Reward import calculate_reward
 from scripts.GameManager import game_state_manager
 
 STATE_DIM = 33
@@ -21,9 +21,7 @@ ACTION_DIM = 9
 WANDB_PROJECT = "Racing-DQN"
 WANDB_RUN_ID = "train_3.0"
 
-
-class Trainer:
-    
+class Trainer: 
     def __init__(self, display, clock):
         self.display = display
         self.clock = clock
@@ -96,7 +94,7 @@ class Trainer:
         
         # Initialize WandB
         if self.wandb_enabled:
-            self._init_wandb(model_exists)
+            self.init_wandb(model_exists)
         
         self.start_time = time.time()
         self.fps_timer = time.time()
@@ -104,10 +102,10 @@ class Trainer:
         print(f"Episode: {self.agent.episode_count}")
         print("ESC=menu | V=toggle viz\n")
         
-        self._start_new_episode()
+        self.start_new_episode()
         self.initialized = True
     
-    def _init_wandb(self, resume_training):
+    def init_wandb(self, resume_training):
         try:
             wandb.init(
                 project=WANDB_PROJECT,
@@ -134,7 +132,7 @@ class Trainer:
             print(f"⚠ WandB init failed: {e}")
             self.wandb_enabled = False
     
-    def _start_new_episode(self):
+    def start_new_episode(self):
         self.environment.reset()
         self.steps = 0
         self.episode_reward = 0.0
@@ -148,7 +146,7 @@ class Trainer:
             'timeouts': 0
         }
     
-    def _end_episode(self):
+    def end_episode(self):
         cp = self.environment.checkpoint_manager.crossed_count
         finished = self.environment.car_finished
         crashed = self.environment.car_crashed
@@ -267,7 +265,7 @@ class Trainer:
             print(f"  Time: {elapsed/60:.1f}m | ε: {self.agent.epsilon:.4f}")
             print("="*80 + "\n")
         
-        self._start_new_episode()
+        self.start_new_episode()
     
     def run(self, dt):
         if not self.initialized:
@@ -276,10 +274,10 @@ class Trainer:
         # Events
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                self._save_and_exit()
+                self.save_and_exit()
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
-                    self._return_to_menu()
+                    self.return_to_menu()
                 elif event.key == pygame.K_v:
                     self.show_visualization = not self.show_visualization
         
@@ -319,7 +317,7 @@ class Trainer:
                 self.fps_counter = 0
                 self.fps_timer = current_time
         else:
-            self._end_episode()
+            self.end_episode()
         
         # Rendering
         if self.show_visualization:
@@ -339,7 +337,7 @@ class Trainer:
         
         pygame.display.update()
     
-    def _return_to_menu(self):
+    def return_to_menu(self):
         print("\nReturning to menu...")
         self.agent.save_model()
         if self.wandb_enabled:
@@ -352,7 +350,7 @@ class Trainer:
         self.initialized = False
         game_state_manager.setState('menu')
     
-    def _save_and_exit(self):
+    def save_and_exit(self):
         print("\nSaving and exiting...")
         if self.agent:
             self.agent.save_model()

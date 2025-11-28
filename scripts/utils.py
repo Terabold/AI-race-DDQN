@@ -1,11 +1,14 @@
 import pygame
 import math
-from scripts.Constants import *
+from scripts.Constants import FONT, COUNTDOWN_FONT, WIDTH, HEIGHT, BLACK, WHITE, RED, GREEN, DODGERBLUE, DEFAULT_SOUND_VOLUME, DISPLAY_SIZE
 from pathlib import Path
 
 
+_fonts = {}
 def font_scale(size, Font=FONT):
-    return pygame.font.Font(Font, size)
+    if (size, Font) not in _fonts:
+        _fonts[(size, Font)] = pygame.font.Font(Font, size)
+    return _fonts[(size, Font)]
 
 
 def create_shadowed_text(text, font, color, shadow_color=BLACK, offset=4):
@@ -50,7 +53,7 @@ def calculate_ui_constants(display_size):
 # GAME OVERLAYS
 # ============================================================================
 
-def _draw_game_overlay(environment, title, title_color, overlay_tint=None):
+def draw_game_overlay(environment, title, title_color, overlay_tint=None):
     """Helper to draw game end overlays"""
     current_time = pygame.time.get_ticks() / 1000
     
@@ -91,11 +94,11 @@ def _draw_game_overlay(environment, title, title_color, overlay_tint=None):
 
 
 def draw_finished(environment):
-    _draw_game_overlay(environment, "Race Finished!", GREEN)
+    draw_game_overlay(environment, "Race Finished!", GREEN)
 
 
 def draw_failed(environment):
-    _draw_game_overlay(environment, "Race Failed!", RED, overlay_tint=(255, 0, 0, 30))
+    draw_game_overlay(environment, "Race Failed!", RED, overlay_tint=(255, 0, 0, 30))
 
 
 def draw_ui(environment):

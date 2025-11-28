@@ -1,6 +1,6 @@
 import pygame
 import sys
-from scripts.Constants import *
+from scripts.Constants import MENUFONT, WHITE, BLACK, COLORS, CAR_COLORS, CAR_COLORS_LIST, GOLD, WIDTH, HEIGHT
 from scripts.utils import Button, calculate_ui_constants
 from scripts.GameManager import game_state_manager
 from pathlib import Path
@@ -154,7 +154,7 @@ class RaceSettingsMenu(BaseMenuScreen):
         self.info_font = pygame.font.Font(MENUFONT, int(screen.get_height() * 0.02))
         super().__init__(screen, "Race Settings")
     
-    def _load_car_image(self, color):
+    def load_car_image(self, color):
         if color not in self.car_images:
             path = Path(CAR_COLORS[color])
             if path.exists():
@@ -188,9 +188,9 @@ class RaceSettingsMenu(BaseMenuScreen):
         # Player type buttons
         for i, ptype in enumerate(["Human", "DQN"]):
             y = top + (i + 1) * spacing
-            b1 = self.create_button(ptype, lambda pt=ptype: self._toggle_p1(pt), 
+            b1 = self.create_button(ptype, lambda pt=ptype: self.toggle_p1(pt), 
                                    p1_x - btn_width//2, y, btn_width)
-            b2 = self.create_button(ptype, lambda pt=ptype: self._toggle_p2(pt), 
+            b2 = self.create_button(ptype, lambda pt=ptype: self.toggle_p2(pt), 
                                    p2_x - btn_width//2, y, btn_width)
             self.p1_type_btns.append(b1)
             self.p2_type_btns.append(b2)
@@ -198,10 +198,10 @@ class RaceSettingsMenu(BaseMenuScreen):
         # Car buttons with images
         for i, color in enumerate(CAR_COLORS_LIST):
             y = top + (i + 1) * spacing
-            img = self._load_car_image(color)
-            b1 = self.create_button("", lambda c=color: self._select_p1_car(c), 
+            img = self.load_car_image(color)
+            b1 = self.create_button("", lambda c=color: self.select_p1_car(c), 
                                    p1_car_x - car_width//2, y, car_width, image=img)
-            b2 = self.create_button("", lambda c=color: self._select_p2_car(c), 
+            b2 = self.create_button("", lambda c=color: self.select_p2_car(c), 
                                    p2_car_x - car_width//2, y, car_width, image=img)
             b1.color_name = color
             b2.color_name = color
@@ -209,27 +209,27 @@ class RaceSettingsMenu(BaseMenuScreen):
             self.p2_car_btns.append(b2)
         
         # Start and back
-        self.create_button("Start", self._start, cx - 150, int(h * 0.85), 300, COLORS["start"])
+        self.create_button("Start", self.start, cx - 150, int(h * 0.85), 300, COLORS["start"])
         self.create_button("←", lambda: game_state_manager.setState('menu'), 
                           int(w * 0.02), int(h * 0.02), int(w * 0.08))
     
-    def _toggle_p1(self, ptype):
+    def toggle_p1(self, ptype):
         current = game_state_manager.player1_selection
         game_state_manager.player1_selection = None if current == ptype else ptype
     
-    def _toggle_p2(self, ptype):
+    def toggle_p2(self, ptype):
         current = game_state_manager.player2_selection
         game_state_manager.player2_selection = None if current == ptype else ptype
     
-    def _select_p1_car(self, color):
+    def select_p1_car(self, color):
         if color != game_state_manager.player2_car_color:
             game_state_manager.player1_car_color = color
     
-    def _select_p2_car(self, color):
+    def select_p2_car(self, color):
         if color != game_state_manager.player1_car_color:
             game_state_manager.player2_car_color = color
     
-    def _start(self):
+    def start(self):
         if game_state_manager.player1_selection or game_state_manager.player2_selection:
             game_state_manager.setState('game')
     
@@ -246,7 +246,7 @@ class RaceSettingsMenu(BaseMenuScreen):
     
     def draw(self):
         self.draw_title()
-        self._draw_labels()
+        self.draw_labels()
         
         # Player type buttons
         ptypes = ["Human", "DQN"]
@@ -269,9 +269,9 @@ class RaceSettingsMenu(BaseMenuScreen):
         for btn in self.buttons[-2:]:
             self.draw_button(btn)
         
-        self._draw_controls()
+        self.draw_controls()
     
-    def _draw_labels(self):
+    def draw_labels(self):
         w = self.screen.get_width()
         cx = w // 2
         col_offset = int(w * 0.12)
@@ -289,16 +289,16 @@ class RaceSettingsMenu(BaseMenuScreen):
             surf = self.font.render(text, True, color)
             self.screen.blit(surf, surf.get_rect(center=(x, y)))
     
-    def _draw_controls(self):
+    def draw_controls(self):
         w, h = self.screen.get_size()
         y = int(h * 0.5)
         
         if game_state_manager.player1_selection:
-            self._draw_control_panel(int(w * 0.08), y, True)
+            self.draw_control_panel(int(w * 0.08), y, True)
         if game_state_manager.player2_selection:
-            self._draw_control_panel(int(w * 0.92), y, False)
+            self.draw_control_panel(int(w * 0.92), y, False)
     
-    def _draw_control_panel(self, x, y, is_p1):
+    def draw_control_panel(self, x, y, is_p1):
         ctrl = ({'Forward': 'W', 'Backward': 'S', 'Left': 'A', 'Right': 'D'} if is_p1 
                 else {'Forward': 'Up', 'Backward': 'Down', 'Left': 'Left', 'Right': 'Right'})
         color = COLORS["p1"] if is_p1 else COLORS["p2"]
@@ -360,19 +360,19 @@ class TesterSettingsMenu(BaseMenuScreen):
         
         for i, num in enumerate(presets):
             x = start_x + i * (btn_width + 20)
-            btn = self.create_button(str(num), lambda n=num: self._set_count(n),
+            btn = self.create_button(str(num), lambda n=num: self.set_count(n),
                                     x, preset_y, btn_width, (70, 100, 180))
             btn.preset_value = num
             self.preset_btns.append(btn)
         
-        self.create_button("Test", self._start_test, cx - 150, int(h * 0.85), 300, (70, 180, 70))
+        self.create_button("Test", self.start_test, cx - 150, int(h * 0.85), 300, (70, 180, 70))
         self.create_button("←", lambda: game_state_manager.setState('menu'),
                           int(w * 0.02), int(h * 0.02), int(w * 0.08))
     
-    def _set_count(self, num):
+    def set_count(self, num):
         self.num_cars = num
     
-    def _start_test(self):
+    def start_test(self):
         game_state_manager.tester_num_cars = self.num_cars
         game_state_manager.setState('tester')
     

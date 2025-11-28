@@ -4,7 +4,7 @@ import os
 import numpy as np
 from scripts.AIEnvironment import AIEnvironment
 from scripts.dqn_agent import DQNAgent
-from scripts.Constants import *
+from scripts.Constants import FONT, INFERENCE_EPSILON, BOMB_LIST, NUM_OBSTACLES, GOLD, YELLOW, GREEN, RED, ORANGE, WHITE
 from scripts.Obstacle import Obstacle
 from scripts.GameManager import game_state_manager
 
@@ -130,7 +130,7 @@ class TesterGame:
             next_state, step_info, done = env.step(action)
             
             if done:
-                self._record_fate(env)
+                self.record_fate(env)
                 finished_this_frame.append(i)
         
         # Remove finished cars from active set
@@ -139,11 +139,11 @@ class TesterGame:
         
         # Draw
         self.display.fill((0, 0, 0))
-        self._draw_track()
-        self._draw_cars()
-        self._draw_stats()
+        self.draw_track()
+        self.draw_cars()
+        self.draw_stats()
     
-    def _record_fate(self, env):
+    def record_fate(self, env):
         """Record what happened to a car"""
         if env.car_finished:
             self.fates['finished'] += 1
@@ -152,18 +152,18 @@ class TesterGame:
         elif env.car_timeout:
             self.fates['timeout'] += 1
     
-    def _draw_track(self):
+    def draw_track(self):
         """Draw track and finish line once"""
         self.display.blit(self.ref_env.track_border, (0, 0))
         self.display.blit(self.ref_env.finish_line, self.ref_env.finish_line_position)
     
-    def _draw_cars(self):
+    def draw_cars(self):
         """Draw only ACTIVE car positions"""
         for i in self.active_indices:
             car = self.environments[i].car
             self.display.blit(car.image, car.rect)
     
-    def _draw_stats(self):
+    def draw_stats(self):
         """Draw fate counter on screen"""
         y = 15
         x = self.display.get_width() - 280

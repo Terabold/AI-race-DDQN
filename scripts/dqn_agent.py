@@ -69,17 +69,15 @@ class DQNAgent:
         self.recent_finish_times = []
 
     def get_action(self, state, training=True):
-        """Choose an action - random (explore) or best known (exploit)"""
         if state is None:
             return 0
         
-        # Epsilon-greedy: random chance to explore
         if training and random.random() < self.epsilon:
             return random.randint(0, ACTION_DIM - 1)
         else:
-            # Pick action with highest predicted value
             with torch.no_grad():
-                state_tensor = torch.FloatTensor(state).unsqueeze(0).to(self.device)
+                # Create directly on device instead of .to()
+                state_tensor = torch.tensor(state, dtype=torch.float32, device=self.device).unsqueeze(0)
                 q_values = self.policy_net(state_tensor)
                 return torch.argmax(q_values).item()
 

@@ -8,7 +8,7 @@ import math
 import pygame
 import numpy as np
 from pygame.math import Vector2
-from scripts.Constants import *
+from scripts.Constants import CAR_COLORS, MAXSPEED, ROTATESPEED, ACCELERATION, GREEN, YELLOW
 
 class Car(pygame.sprite.Sprite):
     def __init__(self, x, y, car_color="Red"):
@@ -66,14 +66,14 @@ class Car(pygame.sprite.Sprite):
     def cast_rays(self, border_mask, obstacle_group=None):
         """Shoot rays to detect surroundings - called every frame"""
         car_rotation = -self.angle
-        step = 10  # Check every 10 pixels along ray
+        step = 15  # Check every 10 pixels along ray
         width, height = border_mask.get_size()
         
-        self._cast_wall_rays(border_mask, car_rotation, int(step*1.5), width, height)
+        self.cast_wall_rays(border_mask, car_rotation, step, width, height)
         if obstacle_group:
-            self._cast_bomb_rays(border_mask, obstacle_group, car_rotation, step, width, height)
+            self.cast_bomb_rays(border_mask, obstacle_group, car_rotation, step, width, height)
     
-    def _cast_wall_rays(self, border_mask, car_rotation, step, width, height):
+    def cast_wall_rays(self, border_mask, car_rotation, step, width, height):
         """Detect walls only"""
         self.wall_distances.fill(self.ray_length)
         
@@ -104,7 +104,7 @@ class Car(pygame.sprite.Sprite):
             self.wall_distances[idx] = min_dist
             self.wall_collision_points[idx] = collision_point
     
-    def _cast_bomb_rays(self, border_mask, obstacle_group, car_rotation, step, width, height):
+    def cast_bomb_rays(self, border_mask, obstacle_group, car_rotation, step, width, height):
         """Detect walls AND obstacles"""
         self.bomb_distances.fill(self.ray_length)
         self.bomb_hit_obstacle.fill(False)

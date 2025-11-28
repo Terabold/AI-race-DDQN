@@ -1,5 +1,5 @@
 import pygame
-from scripts.Constants import *
+from scripts.Constants import BOMB, OBSTACLE_SIZE, OBSTACLE_HITBOX, BOMB_LIST
 import random
 
 class Obstacle(pygame.sprite.Sprite):

@@ -1,6 +1,11 @@
 import pygame
-import math
-from scripts.Constants import *
+import numpy as np
+from scripts.Constants import (FONT, GRASS, TRACK, TRACK_BORDER, FINISHLINE, FINISHLINE_SIZE, 
+                               FINISHLINE_POS, CAR_START_POS, CAR1_FAIR_START, CAR2_FAIR_START, 
+                               NUM_OBSTACLES, COLLIDE_SOUND, WIN_SOUND, OBSTACLE_SOUND, COUNTDOWN_SOUND,
+                               BACKGROUND_MUSIC, COLLISION_SOUND_VOLUME, WIN_SOUND_VOLUME, OBSTACLE_SOUND_VOLUME,
+                               COUNTDOWN_SOUND_VOLUME, DEFAULT_SOUND_VOLUME, OBSTACLE_VELOCITY_REDUCTION, WIDTH,
+                               HEIGHT, WHITE, BLACK, TARGET_TIME, FPS)
 from scripts.Car import Car
 from scripts.Obstacle import Obstacle
 from scripts.utils import (draw_finished, draw_failed, draw_ui, 
@@ -58,7 +63,7 @@ class PauseMenu:
             
             # Main Menu button clicked
             elif self.main_menu_button.collidepoint(mouse_pos):
-                self._return_to_menu()
+                self.return_to_menu()
                 return True
         
         elif event.type == pygame.KEYDOWN:
@@ -69,7 +74,7 @@ class PauseMenu:
         
         return False
     
-    def _return_to_menu(self):
+    def return_to_menu(self):
         """Return to main menu"""
         # Reset game state manager selections so player can choose again
         game_state_manager.player1_selection = None
@@ -96,7 +101,7 @@ class PauseMenu:
         self.surface.blit(title_text, (title_x, title_y))
         
         # Resume Button
-        self._draw_button(
+        self.draw_button(
             self.resume_button,
             "Resume",
             self.resume_hovered,
@@ -104,7 +109,7 @@ class PauseMenu:
         )
         
         # Main Menu Button
-        self._draw_button(
+        self.draw_button(
             self.main_menu_button,
             "Main Menu",
             self.main_menu_hovered,
@@ -117,7 +122,7 @@ class PauseMenu:
         hint_y = HEIGHT // 2 + 150
         self.surface.blit(hint_text, (hint_x, hint_y))
     
-    def _draw_button(self, rect, text, hovered, base_color):
+    def draw_button(self, rect, text, hovered, base_color):
         """Draw a single button"""
         # Button color (brighter when hovered)
         if hovered:
@@ -159,15 +164,15 @@ class Environment:
         self.car2_finished = False
 
         start_x, start_y = CAR_START_POS
-        self._setup_cars(start_x, start_y, car_color1, car_color2)
+        self.setup_cars(start_x, start_y, car_color1, car_color2)
 
         # Obstacles
         self.num_obstacles = NUM_OBSTACLES
         self.obstacle_group = pygame.sprite.Group()
-        self._generate_obstacles()
+        self.generate_obstacles()
 
         # Track
-        self._setup_track()
+        self.setup_track()
 
         # Timers
         self.car1_time = TARGET_TIME if self.car1_active else 0
@@ -179,7 +184,7 @@ class Environment:
         
         self.pause_menu = PauseMenu(surface)
 
-    def _setup_cars(self, start_x, start_y, car_color1, car_color2):
+    def setup_cars(self, start_x, start_y, car_color1, car_color2):
         self.all_sprites = pygame.sprite.Group()
 
         if self.car1_active and self.car2_active:
@@ -199,7 +204,7 @@ class Environment:
         if self.car2_active:
             self.all_sprites.add(self.car2)
 
-    def _setup_track(self):
+    def setup_track(self):
         self.track = pygame.image.load(TRACK).convert_alpha()
         self.track_border = pygame.image.load(TRACK_BORDER).convert_alpha()
         self.track_border_mask = pygame.mask.from_surface(self.track_border)
@@ -211,7 +216,7 @@ class Environment:
         self.finish_line_position = FINISHLINE_POS
         self.finish_mask = pygame.mask.from_surface(self.finish_line)
 
-    def _generate_obstacles(self):
+    def generate_obstacles(self):
         obstacle_generator = Obstacle(0, 0, show_image=True)
         self.obstacle_group.add(
             obstacle_generator.generate_obstacles(self.num_obstacles)
@@ -309,8 +314,6 @@ class Environment:
             self.remaining_time = max(self.car1_time, self.car2_time)
             self.check_game_end_condition()
 
-        self.all_sprites.update()
-
     def move(self, action1, action2):
         """
         Execute actions and return step information for both cars.
@@ -327,11 +330,11 @@ class Environment:
             pre_finished = self.car1_finished
             pre_velocity = self.car1.velocity
             
-            self._handle_car_movement(self.car1, action1)
+            self.handle_car_movement(self.car1, action1)
             
-            hit_obstacle = self._check_single_car_obstacle(self.car1, pre_velocity)
-            just_finished = self._check_single_car_finish(self.car1, pre_finished)
-            just_collided = self._check_single_car_collision(self.car1, pre_failed)
+            hit_obstacle = self.check_single_car_obstacle(self.car1, pre_velocity)
+            just_finished = self.check_single_car_finish(self.car1, pre_finished)
+            just_collided = self.check_single_car_collision(self.car1, pre_failed)
             
             car1_info = {
                 'collision': just_collided,
@@ -345,11 +348,11 @@ class Environment:
             pre_finished = self.car2_finished
             pre_velocity = self.car2.velocity
             
-            self._handle_car_movement(self.car2, action2)
+            self.handle_car_movement(self.car2, action2)
             
-            hit_obstacle = self._check_single_car_obstacle(self.car2, pre_velocity)
-            just_finished = self._check_single_car_finish(self.car2, pre_finished)
-            just_collided = self._check_single_car_collision(self.car2, pre_failed)
+            hit_obstacle = self.check_single_car_obstacle(self.car2, pre_velocity)
+            just_finished = self.check_single_car_finish(self.car2, pre_finished)
+            just_collided = self.check_single_car_collision(self.car2, pre_failed)
             
             car2_info = {
                 'collision': just_collided,
@@ -360,7 +363,7 @@ class Environment:
         done = self.check_game_end_condition()
         return done, car1_info, car2_info
 
-    def _check_single_car_obstacle(self, car, pre_velocity):
+    def check_single_car_obstacle(self, car, pre_velocity):
         """Check if a single car hit an obstacle and apply velocity reduction."""
         for obstacle in self.obstacle_group.sprites():
             if pygame.sprite.collide_mask(car, obstacle):
@@ -402,7 +405,7 @@ class Environment:
             # Use new pause menu instead
             self.pause_menu.draw()
             
-    def _check_single_car_finish(self, car, was_finished):
+    def check_single_car_finish(self, car, was_finished):
         """Check if a car just crossed the finish line."""
         if was_finished or car.failed:
             return False
@@ -421,7 +424,7 @@ class Environment:
         
         return False
 
-    def _check_single_car_collision(self, car, was_failed):
+    def check_single_car_collision(self, car, was_failed):
         """Check if a car just crashed."""
         if was_failed:
             return False
@@ -447,7 +450,7 @@ class Environment:
         
         return False
 
-    def _handle_car_movement(self, car, action):
+    def handle_car_movement(self, car, action):
         if action is None:
             return
 
@@ -507,8 +510,6 @@ class Environment:
             car = self.car2
         else:
             return None
-
-        import numpy as np
         
         car.cast_rays(self.track_border_mask, self.obstacle_group)
 

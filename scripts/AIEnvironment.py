@@ -12,8 +12,8 @@ class AIEnvironment:
         self.car = Car(*CAR_START_POS, "Red")
         self.num_obstacles = NUM_OBSTACLES
         self.obstacle_group = pygame.sprite.Group()
-        self._generate_obstacles()
-        self._setup_track()
+        self.generate_obstacles()
+        self.setup_track()
         self.checkpoint_manager = CheckpointManager()
         self.font = pygame.font.Font(FONT, int(UI_FONT_SIZE/2))
         # Time
@@ -35,7 +35,7 @@ class AIEnvironment:
         self.last_reward_breakdown = {}
         self.episode_reward = 0.0
 
-    def _setup_track(self):
+    def setup_track(self):
         self.track_border = pygame.image.load(TRACK_BORDER).convert_alpha()
         self.track_border_mask = pygame.mask.from_surface(self.track_border)
         self.finish_line = pygame.transform.scale(
@@ -45,7 +45,7 @@ class AIEnvironment:
         self.finish_line_position = FINISHLINE_POS
         self.finish_mask = pygame.mask.from_surface(self.finish_line)
 
-    def _generate_obstacles(self):
+    def generate_obstacles(self):
         obstacle_generator = Obstacle(0, 0, show_image=False)
         self.obstacle_group.add(
             obstacle_generator.generate_obstacles(self.num_obstacles)
@@ -112,7 +112,7 @@ class AIEnvironment:
         self.prev_checkpoint_distance = self.current_checkpoint_distance
 
         pre_velocity = self.car.velocity
-        self._handle_car_movement(action)
+        self.handle_car_movement(action)
 
         car_pos = (self.car.position.x, self.car.position.y)
         crossed, backward = self.checkpoint_manager.check_crossing(car_pos)
@@ -122,9 +122,9 @@ class AIEnvironment:
             'timeout': False, 'checkpoint_crossed': crossed, 'backward_crossed': backward
         }
 
-        step_info['hit_obstacle'] = self._check_obstacle(pre_velocity)
-        step_info['finished'] = self._check_finish()
-        step_info['collision'] = self._check_collision()
+        step_info['hit_obstacle'] = self.check_obstacle(pre_velocity)
+        step_info['finished'] = self.check_finish()
+        step_info['collision'] = self.check_collision()
 
         self.time_remaining = max(0, self.time_remaining - 1/FPS)
         if self.time_remaining <= 0 and not self.car_finished and not self.car_crashed:
@@ -137,7 +137,7 @@ class AIEnvironment:
         next_state = self.get_state()
         return next_state, step_info, done
 
-    def _handle_car_movement(self, action):
+    def handle_car_movement(self, action):
         if action is None: return
         moving = action in [1, 2, 5, 6, 7, 8]
         if action in [3, 5, 7]: self.car.rotate(left=True)
@@ -146,7 +146,7 @@ class AIEnvironment:
         elif action in [2, 7, 8]: self.car.accelerate(False)
         if not moving: self.car.reduce_speed()
 
-    def _check_obstacle(self, pre_velocity):
+    def check_obstacle(self, pre_velocity):
         for obstacle in self.obstacle_group.sprites():
             if pygame.sprite.collide_mask(self.car, obstacle):
                 self.car.velocity *= OBSTACLE_VELOCITY_REDUCTION
@@ -154,7 +154,7 @@ class AIEnvironment:
                 return pre_velocity > 1.0
         return False
 
-    def _check_finish(self):
+    def check_finish(self):
         if self.car_finished or self.car_crashed: return False
         offset = (
             int(self.car.rect.left - self.finish_line_position[0]),
@@ -167,7 +167,7 @@ class AIEnvironment:
                 return True
         return False
 
-    def _check_collision(self):
+    def check_collision(self):
         if self.car_crashed: return False
         offset = (int(self.car.rect.left), int(self.car.rect.top))
         finish_offset = (
@@ -189,7 +189,7 @@ class AIEnvironment:
                 return True
         return False
 
-    def _draw_text(self, text: str, pos: tuple, color=UI_COLOR, size=UI_FONT_SIZE):
+    def draw_text(self, text: str, pos: tuple, color=UI_COLOR, size=UI_FONT_SIZE):
         shadow = self.font.render(text, True, SHADOW_COLOR)
         main   = self.font.render(text, True, color)
         self.surface.blit(shadow, (pos[0]+1, pos[1]+1))
@@ -240,33 +240,33 @@ class AIEnvironment:
         
         # Time
         time_color = GREEN if self.time_remaining > 10 else (YELLOW if self.time_remaining > 3 else RED)
-        self._draw_text(f"Time: {self.time_remaining:.1f}s", (x, y), time_color)
+        self.draw_text(f"Time: {self.time_remaining:.1f}s", (x, y), time_color)
         y += LINE_HEIGHT
         
         # Checkpoints
         total_cp = self.checkpoint_manager.total_checkpoints
         current_cp = self.checkpoint_manager.crossed_count
         if self.car_finished: current_cp = total_cp
-        self._draw_text(f"CP: {current_cp}/{total_cp}", (x, y))
+        self.draw_text(f"CP: {current_cp}/{total_cp}", (x, y))
         y += LINE_HEIGHT
         
         # Speed
         speed_ratio = self.car.velocity / self.car.max_velocity if self.car.max_velocity > 0 else 0
         speed_color = GREEN if speed_ratio > 0.7 else (YELLOW if speed_ratio > 0.3 else RED)
-        self._draw_text(f"Speed: {speed_ratio:.1%}", (x, y), speed_color)
+        self.draw_text(f"Speed: {speed_ratio:.1%}", (x, y), speed_color)
         y += LINE_HEIGHT
         
         # Distance to checkpoint
         if self.current_checkpoint_distance > 0:
             dist_color = GREEN if self.current_checkpoint_distance < 200 else (YELLOW if self.current_checkpoint_distance < 400 else WHITE)
-            self._draw_text(f"Dist: {self.current_checkpoint_distance:.0f}px", (x, y), dist_color)
+            self.draw_text(f"Dist: {self.current_checkpoint_distance:.0f}px", (x, y), dist_color)
             y += LINE_HEIGHT
         
         # Distance delta (progress indicator)
         if self.prev_checkpoint_distance > 0:
             delta = self.prev_checkpoint_distance - self.current_checkpoint_distance
             delta_color = GREEN if delta > 0 else RED
-            self._draw_text(f"Δ: {delta:+.1f}px", (x, y), delta_color)
+            self.draw_text(f"Δ: {delta:+.1f}px", (x, y), delta_color)
             y += LINE_HEIGHT
 
         # === REWARD INFO (TOP RIGHT) ===
@@ -274,12 +274,12 @@ class AIEnvironment:
         ry = MARGIN_Y_TOP
         
         # Episode reward
-        self._draw_text(f"Episode R: {self.episode_reward:.1f}", (rx, ry), GOLD)
+        self.draw_text(f"Episode R: {self.episode_reward:.1f}", (rx, ry), GOLD)
         ry += LINE_HEIGHT
         
         # Last step reward
         reward_color = GREEN if self.last_reward > 0 else (RED if self.last_reward < 0 else WHITE)
-        self._draw_text(f"Step R: {self.last_reward:+.2f}", (rx, ry), reward_color)
+        self.draw_text(f"Step R: {self.last_reward:+.2f}", (rx, ry), reward_color)
         ry += LINE_HEIGHT
         
         # Reward breakdown (if exists)
@@ -290,7 +290,7 @@ class AIEnvironment:
                 if value == 0: continue  # Skip zero values
                 
                 color = GREEN if value > 0 else RED
-                self._draw_text(f"{key}: {value:+.1f}", (rx, ry), color, size=UI_DEBUG_SIZE)
+                self.draw_text(f"{key}: {value:+.1f}", (rx, ry), color, size=UI_DEBUG_SIZE)
                 ry += DEBUG_LINE_HEIGHT
 
         # === STATE INFO (BOTTOM LEFT) ===
@@ -307,7 +307,7 @@ class AIEnvironment:
         y_debug -= info_height - 10
 
         # State title
-        self._draw_text("STATE VECTOR:", (MARGIN_X, y_debug), WHITE, UI_DEBUG_SIZE)
+        self.draw_text("STATE VECTOR:", (MARGIN_X, y_debug), WHITE, UI_DEBUG_SIZE)
         y_debug += DEBUG_LINE_HEIGHT
 
         # Display all state values
@@ -320,5 +320,5 @@ class AIEnvironment:
             else:
                 color = GREEN
             
-            self._draw_text(f"[{i:2d}] {value:.3f}", (MARGIN_X, y_debug), color, UI_DEBUG_SIZE)
+            self.draw_text(f"[{i:2d}] {value:.3f}", (MARGIN_X, y_debug), color, UI_DEBUG_SIZE)
             y_debug += DEBUG_LINE_HEIGHT

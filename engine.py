@@ -5,7 +5,7 @@ Think of it as a TV remote that switches between channels
 """
 
 import pygame
-from scripts.Constants import DISPLAY_SIZE, FPS, FONT, MENUBG
+from scripts.Constants import FPS, MENUBG
 from scripts.Game import Game
 from scripts.menu import MainMenu, RaceSettingsMenu, TesterSettingsMenu
 from scripts.GameManager import game_state_manager

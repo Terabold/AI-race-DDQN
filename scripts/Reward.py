@@ -1,8 +1,3 @@
-from scripts.Constants import CHECKPOINT_CENTERS
-import numpy as np
-import math
-
-
 def calculate_reward(environment, step_info, prev_state=None):
     """
     Delta-based reward function - CLEANED UP VERSION

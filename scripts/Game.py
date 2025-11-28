@@ -38,10 +38,10 @@ class Game:
         )
         
         # Create player controllers
-        self.player1 = self._create_player(settings['player1'], 1)
-        self.player2 = self._create_player(settings['player2'], 2)
+        self.player1 = self.create_player(settings['player1'], 1)
+        self.player2 = self.create_player(settings['player2'], 2)
 
-    def _create_player(self, player_type, player_num):
+    def create_player(self, player_type, player_num):
         """Create human or AI controller"""
         if player_type == "Human":
             # Player 1 uses WASD, Player 2 uses Arrow keys
@@ -89,13 +89,14 @@ class Game:
         # Update game if not paused
         if self.environment.game_state != "paused":
             self.environment.update()
-            p1_action = self._get_action(self.player1, 1)
-            p2_action = self._get_action(self.player2, 2)
-            self.environment.move(p1_action, p2_action)
+            if self.environment.game_state == "running":
+                p1_action = self.get_action(self.player1, 1)
+                p2_action = self.get_action(self.player2, 2)
+                self.environment.move(p1_action, p2_action)
 
         self.environment.draw()
 
-    def _get_action(self, player, car_num):
+    def get_action(self, player, car_num):
         """Get action from player (human input or AI decision)"""
         if player is None:
             return None
