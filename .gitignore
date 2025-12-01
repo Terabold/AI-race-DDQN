@@ -15,9 +15,16 @@ journey/*
 */journey/*
 
 # Ignore all pretrained / saved models
-readymodel/
-readymodel/**
+readymodel(old)/
+readymodel(old)/**
 
-first run wandb/
+readymodels/
+readymodels/**
+
+train 1/
+train_2.0/
+*/train_2.0/
+train_2.0/*
+*/train_2.0/*
 
 working model 5k episodes WANDB_RUN_ID = train 1/

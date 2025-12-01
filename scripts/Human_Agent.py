@@ -1,15 +1,18 @@
+# keyboard input handler
+# wasd for p1, arrows for p2
+# actions: 0=nothing, 1=fwd, 2=back, 3=left, 4=right, 5-8=combos
 import pygame
 
-class BaseHumanAgent:
-    def __init__(self):
-        self.action = 0
-        self.controls = {
-            'forward': None,
-            'backward': None,
-            'left': None,
-            'right': None
-        }
 
+class HumanAgent:
+    CONTROLS = {
+        1: {'forward': pygame.K_w, 'backward': pygame.K_s, 'left': pygame.K_a, 'right': pygame.K_d},
+        2: {'forward': pygame.K_UP, 'backward': pygame.K_DOWN, 'left': pygame.K_LEFT, 'right': pygame.K_RIGHT}
+    }
+    
+    def __init__(self, player_num=1):
+        self.controls = self.CONTROLS.get(player_num, self.CONTROLS[1])
+    
     def get_action(self):
         keys = pygame.key.get_pressed()
         
@@ -18,43 +21,23 @@ class BaseHumanAgent:
         left = keys[self.controls['left']]
         right = keys[self.controls['right']]
         
+        # combos first
         if forward and left:
-            self.action = 5
-        elif forward and right:
-            self.action = 6
-        elif backward and left:
-            self.action = 7
-        elif backward and right:
-            self.action = 8
-        elif forward:
-            self.action = 1
-        elif backward:
-            self.action = 2
-        elif left:
-            self.action = 3
-        elif right:
-            self.action = 4
-        else:
-            self.action = 0
-            
-        return self.action
-
-class HumanAgentWASD(BaseHumanAgent):
-    def __init__(self):
-        super().__init__()
-        self.controls = {
-            'forward': pygame.K_w,
-            'backward': pygame.K_s,
-            'left': pygame.K_a,
-            'right': pygame.K_d
-        }
-
-class HumanAgentArrows(BaseHumanAgent):
-    def __init__(self):
-        super().__init__()
-        self.controls = {
-            'forward': pygame.K_UP,
-            'backward': pygame.K_DOWN,
-            'left': pygame.K_LEFT,
-            'right': pygame.K_RIGHT
-        }
+            return 5
+        if forward and right:
+            return 6
+        if backward and left:
+            return 7
+        if backward and right:
+            return 8
+        # singles
+        if forward:
+            return 1
+        if backward:
+            return 2
+        if left:
+            return 3
+        if right:
+            return 4
+        
+        return 0

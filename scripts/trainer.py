@@ -1,4 +1,4 @@
-# trainer.py - SIMPLIFIED & CLEAN
+# the training loop - runs episodes and logs to wandb
 import os
 import pygame
 import sys
@@ -17,9 +17,8 @@ from scripts.GameManager import game_state_manager
 STATE_DIM = 33
 ACTION_DIM = 9
 
-# WandB Configuration
 WANDB_PROJECT = "Racing-DQN"
-WANDB_RUN_ID = "train_3.0"
+WANDB_RUN_ID = "train 4"
 
 class Trainer: 
     def __init__(self, display, clock):
@@ -30,13 +29,11 @@ class Trainer:
         self.initialized = False
         self.wandb_enabled = True
         
-        # Training state
         self.steps = 0
         self.episode_reward = 0.0
         self.losses = []
         self.state = None
         
-        # Event tracking for this episode
         self.episode_events = {
             'checkpoint_crosses': 0,
             'backward_crosses': 0,
@@ -45,21 +42,19 @@ class Trainer:
             'timeouts': 0
         }
         
-        # Timing
         self.start_time = None
         self.fps_counter = 0
         self.fps_timer = None
         self.current_fps = 0
         
-        # Rolling stats (last 100 episodes)
+        # rolling stats (last 100 episodes)
         self.last_100_rewards = deque(maxlen=100)
         self.last_100_checkpoints = deque(maxlen=100)
         self.last_100_losses = deque(maxlen=100)
-        self.last_100_outcomes = deque(maxlen=100)  # 0=crash, 1=timeout, 2=finish
-        self.last_100_completion_times = deque(maxlen=100)  # Only for finishes
+        self.last_100_outcomes = deque(maxlen=100)  # 0=crash 1=timeout 2=finish
+        self.last_100_completion_times = deque(maxlen=100)
         self.last_100_obstacle_hits = deque(maxlen=100)
         
-        # Visualization
         self.show_visualization = False
         self.font = pygame.font.Font(FONT, 24)
         
@@ -82,7 +77,6 @@ class Trainer:
         
         self.agent = DQNAgent(device=device)
         
-        # Load or create model
         model_exists = os.path.exists(self.agent.model_path)
         if model_exists:
             if self.agent.load_model(self.agent.model_path):
@@ -92,7 +86,6 @@ class Trainer:
             self.agent.save_model()
             print("New model created")
         
-        # Initialize WandB
         if self.wandb_enabled:
             self.init_wandb(model_exists)
         
@@ -122,14 +115,14 @@ class Trainer:
                     "buffer_size": self.agent.replay_buffer.capacity,
                 }
             )
-            print(f"✓ WandB: {WANDB_PROJECT}/{WANDB_RUN_ID}")
+            print(f"WandB: {WANDB_PROJECT}/{WANDB_RUN_ID}")
             
             wandb.define_metric("episode")
             wandb.define_metric("episode/*", step_metric="episode")
             wandb.define_metric("performance/*", step_metric="episode")
             
         except Exception as e:
-            print(f"⚠ WandB init failed: {e}")
+            print(f"WandB init failed: {e}")
             self.wandb_enabled = False
     
     def start_new_episode(self):
@@ -152,7 +145,6 @@ class Trainer:
         crashed = self.environment.car_crashed
         timeout = self.environment.car_timeout
         
-        # Determine outcome
         if finished:
             outcome = 2
             completion_time = 25.0 - self.environment.time_remaining
@@ -160,11 +152,10 @@ class Trainer:
         elif timeout:
             outcome = 1
             completion_time = 25.0
-        else:  # crashed
+        else:
             outcome = 0
             completion_time = 25.0
         
-        # Update agent
         self.agent.end_episode(
             episode_reward=self.episode_reward,
             checkpoints_reached=cp,
@@ -172,7 +163,6 @@ class Trainer:
             finished=finished
         )
         
-        # Track stats
         self.last_100_rewards.append(self.episode_reward)
         self.last_100_checkpoints.append(cp)
         self.last_100_outcomes.append(outcome)
@@ -180,64 +170,52 @@ class Trainer:
         if self.losses:
             self.last_100_losses.append(float(np.mean(self.losses)))
         
-        # Calculate averages
         avg_reward = float(np.mean(self.last_100_rewards)) if self.last_100_rewards else 0.0
         avg_checkpoints = float(np.mean(self.last_100_checkpoints)) if self.last_100_checkpoints else 0.0
         avg_loss = float(np.mean(self.last_100_losses)) if self.last_100_losses else 0.0
         avg_obstacles = float(np.mean(self.last_100_obstacle_hits)) if self.last_100_obstacle_hits else 0.0
         
-        # Win rate (only finishes count as wins)
         win_rate = (sum(1 for x in self.last_100_outcomes if x == 2) / max(1, len(self.last_100_outcomes))) * 100
         
-        # Average completion time (only for finishes)
         avg_completion = float(np.mean(self.last_100_completion_times)) if self.last_100_completion_times else 0.0
         
-        # Status
         if finished:
-            status = f"✓ FINISH ({completion_time:.2f}s)"
+            status = f"FINISH ({completion_time:.2f}s)"
         elif crashed:
-            status = "✗ CRASH"
+            status = "CRASH"
         else:
-            status = "⏱ TIMEOUT"
+            status = "TIMEOUT"
         
-        # Console
         print(f"Ep {self.agent.episode_count:5d} | {status:20s} | "
               f"CP:{cp:2d} | R:{self.episode_reward:6.1f} | "
-              f"ε:{self.agent.epsilon:.3f} | FPS:{self.current_fps:.0f}")
+              f"eps:{self.agent.epsilon:.3f} | FPS:{self.current_fps:.0f}")
         
-        # WandB - ONLY WHAT MATTERS
         if self.wandb_enabled:
             log_data = {
                 "episode": self.agent.episode_count,
                 
-                # Current episode
                 "episode/reward": self.episode_reward,
                 "episode/checkpoints": cp,
-                "episode/outcome": outcome,  # 0=crash, 1=timeout, 2=finish
+                "episode/outcome": outcome,
                 "episode/loss": float(np.mean(self.losses)) if self.losses else 0.0,
                 
-                # Performance (rolling 100)
                 "performance/win_rate": win_rate,
                 "performance/avg_reward": avg_reward,
                 "performance/avg_checkpoints": avg_checkpoints,
                 "performance/avg_loss": avg_loss,
                 "performance/avg_obstacle_hits": avg_obstacles,
                 
-                # Training state
                 "training/epsilon": self.agent.epsilon,
                 "training/learning_rate": self.agent.optimizer.param_groups[0]['lr'],
                 "training/buffer_size": len(self.agent.replay_buffer),
             }
             
-            # Add completion time only if finished
             if finished:
                 log_data["episode/completion_time"] = completion_time
             
-            # Add average completion time if we have finishes
             if self.last_100_completion_times:
                 log_data["performance/avg_completion_time"] = avg_completion
             
-            # Best time
             if self.agent.best_finish_time > 0:
                 log_data["performance/best_completion_time"] = 25.0 - self.agent.best_finish_time
             
@@ -246,11 +224,11 @@ class Trainer:
             except:
                 pass
         
-        # Auto-save
+        # auto-save
         if self.agent.episode_count % 50 == 0:
             self.agent.save_model()
         
-        # Milestones
+        # milestone print
         if self.agent.episode_count % 100 == 0:
             elapsed = time.time() - self.start_time
             print("\n" + "="*80)
@@ -262,7 +240,7 @@ class Trainer:
                 print(f"  Avg Completion: {avg_completion:.2f}s")
             if self.agent.best_finish_time > 0:
                 print(f"  Best Time: {25.0 - self.agent.best_finish_time:.2f}s (Ep {self.agent.best_finish_episode})")
-            print(f"  Time: {elapsed/60:.1f}m | ε: {self.agent.epsilon:.4f}")
+            print(f"  Time: {elapsed/60:.1f}m | eps: {self.agent.epsilon:.4f}")
             print("="*80 + "\n")
         
         self.start_new_episode()
@@ -271,7 +249,6 @@ class Trainer:
         if not self.initialized:
             self.initialize()
         
-        # Events
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.save_and_exit()
@@ -281,12 +258,12 @@ class Trainer:
                 elif event.key == pygame.K_v:
                     self.show_visualization = not self.show_visualization
         
-        # Training step
+        # training step
         if not self.environment.episode_ended:
             action = self.agent.get_action(self.state, training=True)
             next_state, step_info, done = self.environment.step(action)
             
-            # Track events
+            # track events
             if step_info.get('checkpoint_crossed'):
                 self.episode_events['checkpoint_crosses'] += 1
             if step_info.get('backward_crossed'):
@@ -310,7 +287,7 @@ class Trainer:
             self.state = next_state
             self.fps_counter += 1
             
-            # FPS
+            # fps calc
             current_time = time.time()
             if current_time - self.fps_timer >= 1.0:
                 self.current_fps = self.fps_counter / (current_time - self.fps_timer)
@@ -319,7 +296,7 @@ class Trainer:
         else:
             self.end_episode()
         
-        # Rendering
+        # render
         if self.show_visualization:
             self.environment.draw()
         else:

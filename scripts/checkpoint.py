@@ -1,22 +1,17 @@
-"""
-CHECKPOINT.PY - Tracks race progress
-Checkpoints are invisible lines the car must cross in order
-Prevents AI from cheating by going backwards
-"""
-
+# checkpoints - מונע מהאיי לרמות ע"י נסיעה אחורה
 import pygame
 from scripts.Constants import TRACK_CHECKPOINT_ZONES, FONT
 
 
 def lines_intersect(p1, p2, p3, p4):
-    """Math to check if two line segments cross each other"""
+    # check if two line segments cross
     x1, y1 = p1
     x2, y2 = p2
     x3, y3 = p3
     x4, y4 = p4
     
     denom = (x2 - x1) * (y4 - y3) - (y2 - y1) * (x4 - x3)
-    if abs(denom) < 1e-10:  # Lines are parallel
+    if abs(denom) < 1e-10:  # parallel
         return False
     
     t = ((x3 - x1) * (y4 - y3) - (y3 - y1) * (x4 - x3)) / denom
@@ -27,24 +22,24 @@ def lines_intersect(p1, p2, p3, p4):
 
 class CheckpointManager:
     def __init__(self):
-        self.zones = TRACK_CHECKPOINT_ZONES  # List of checkpoint line coordinates
+        self.zones = TRACK_CHECKPOINT_ZONES
         self.total_checkpoints = len(self.zones)
         self.font = pygame.font.Font(FONT, 12)
         self.reset()
 
     def reset(self):
-        self.current_idx = 0      # Next checkpoint to cross
-        self.crossed_count = 0    # Total crossed
-        self.cross_counts = [0] * self.total_checkpoints  # Times each was crossed
-        self.prev_pos = None      # Previous car position
+        self.current_idx = 0
+        self.crossed_count = 0
+        self.cross_counts = [0] * self.total_checkpoints
+        self.prev_pos = None
 
     def check_crossing(self, car_pos):
-        """Check if car crossed any checkpoint. Returns (forward, backward)"""
+        # returns (crossed_forward, crossed_backward)
         if self.prev_pos is None:
             self.prev_pos = car_pos
             return False, False
 
-        # Check current checkpoint
+        # check if crossed current checkpoint
         if self.current_idx < self.total_checkpoints:
             p1, p2 = self.zones[self.current_idx]
             if lines_intersect(self.prev_pos, car_pos, p1, p2):
@@ -54,7 +49,7 @@ class CheckpointManager:
                 self.prev_pos = car_pos
                 return True, False
 
-        # Check if crossed backwards through already-passed checkpoints
+        # check backwards through passed checkpoints
         for i in range(self.current_idx):
             p1, p2 = self.zones[i]
             if lines_intersect(self.prev_pos, car_pos, p1, p2):
@@ -66,15 +61,15 @@ class CheckpointManager:
         return False, False
 
     def draw(self, surface):
-        """Visualize checkpoints - green=next, gray=passed, red=crossed multiple times"""
+        # green = current target, gray = passed, red = crossed multiple times
         for i, (p1, p2) in enumerate(self.zones):
             if i == self.current_idx:
-                color, width = (0, 255, 0), 4  # Green = current target
+                color, width = (0, 255, 0), 4
             elif i < self.current_idx:
                 color = (255, 0, 0) if self.cross_counts[i] > 1 else (100, 100, 100)
                 width = 3 if self.cross_counts[i] > 1 else 2
             else:
-                color, width = (0, 100, 0), 2  # Dark green = upcoming
+                color, width = (0, 100, 0), 2
             
             pygame.draw.line(surface, color, p1, p2, width)
             cx, cy = (p1[0] + p2[0]) // 2, (p1[1] + p2[1]) // 2

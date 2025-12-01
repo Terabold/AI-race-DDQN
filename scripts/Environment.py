@@ -1,3 +1,4 @@
+# main gameplay environment - with sounds, countdown, 2-player support
 import pygame
 import numpy as np
 from scripts.Constants import (FONT, GRASS, TRACK, TRACK_BORDER, FINISHLINE, FINISHLINE_SIZE, 
@@ -5,151 +6,15 @@ from scripts.Constants import (FONT, GRASS, TRACK, TRACK_BORDER, FINISHLINE, FIN
                                NUM_OBSTACLES, COLLIDE_SOUND, WIN_SOUND, OBSTACLE_SOUND, COUNTDOWN_SOUND,
                                BACKGROUND_MUSIC, COLLISION_SOUND_VOLUME, WIN_SOUND_VOLUME, OBSTACLE_SOUND_VOLUME,
                                COUNTDOWN_SOUND_VOLUME, DEFAULT_SOUND_VOLUME, OBSTACLE_VELOCITY_REDUCTION, WIDTH,
-                               HEIGHT, WHITE, BLACK, TARGET_TIME, FPS)
+                               HEIGHT, TARGET_TIME, FPS)
 from scripts.Car import Car
 from scripts.Obstacle import Obstacle
-from scripts.utils import (draw_finished, draw_failed, draw_ui, 
-                         draw_countdown, load_sound)
+from scripts.utils import draw_finished, draw_failed, draw_ui, draw_countdown, load_sound
 from scripts.GameManager import game_state_manager
+from scripts.menu import PauseMenu
 
-class PauseMenu:    
-    def __init__(self, surface):
-        self.surface = surface
-        self.font_large = pygame.font.Font(FONT, 70)
-        self.font_medium = pygame.font.Font(FONT, 40)
-        
-        # Calculate button positions
-        center_x = WIDTH // 2
-        center_y = HEIGHT // 2
-        
-        button_width = 375
-        button_height = 100
-        button_spacing = 20
-        
-        # Resume button (top)
-        self.resume_button = pygame.Rect(
-            center_x - button_width // 2,
-            center_y - button_height - button_spacing // 2,
-            button_width,
-            button_height
-        )
-        
-        # Main Menu button (bottom)
-        self.main_menu_button = pygame.Rect(
-            center_x - button_width // 2,
-            center_y + button_spacing // 2,
-            button_width,
-            button_height
-        )
-        
-        # Hover states
-        self.resume_hovered = False
-        self.main_menu_hovered = False
-    
-    def handle_event(self, event, environment):
-        """Handle mouse and keyboard events"""
-        if event.type == pygame.MOUSEMOTION:
-            mouse_pos = event.pos
-            self.resume_hovered = self.resume_button.collidepoint(mouse_pos)
-            self.main_menu_hovered = self.main_menu_button.collidepoint(mouse_pos)
-        
-        elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-            mouse_pos = event.pos
-            
-            # Resume button clicked
-            if self.resume_button.collidepoint(mouse_pos):
-                environment.toggle_pause()
-                return True
-            
-            # Main Menu button clicked
-            elif self.main_menu_button.collidepoint(mouse_pos):
-                self.return_to_menu()
-                return True
-        
-        elif event.type == pygame.KEYDOWN:
-            # ESC to resume
-            if event.key == pygame.K_ESCAPE:
-                environment.toggle_pause()
-                return True
-        
-        return False
-    
-    def return_to_menu(self):
-        """Return to main menu"""
-        # Reset game state manager selections so player can choose again
-        game_state_manager.player1_selection = None
-        game_state_manager.player2_selection = None
-        
-        # Go back to menu
-        game_state_manager.setState('menu')
-    
-    def draw(self):
-        """Draw the pause menu overlay"""
-        # Dark overlay
-        overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
-        overlay.fill((0, 0, 0, 180))
-        self.surface.blit(overlay, (0, 0))
-        
-        # Title - "PAUSED"
-        title_text = self.font_large.render("PAUSED", True, WHITE)
-        title_shadow = self.font_large.render("PAUSED", True, BLACK)
-        
-        title_x = (WIDTH - title_text.get_width()) // 2
-        title_y = HEIGHT // 2 - 250
-        
-        self.surface.blit(title_shadow, (title_x + 4, title_y + 4))
-        self.surface.blit(title_text, (title_x, title_y))
-        
-        # Resume Button
-        self.draw_button(
-            self.resume_button,
-            "Resume",
-            self.resume_hovered,
-            (70, 130, 70)  # Green
-        )
-        
-        # Main Menu Button
-        self.draw_button(
-            self.main_menu_button,
-            "Main Menu",
-            self.main_menu_hovered,
-            (130, 70, 70)  # Red
-        )
-        
-        # Hint text
-        hint_text = self.font_medium.render("Press ESC to Resume", True, (200, 200, 200))
-        hint_x = (WIDTH - hint_text.get_width()) // 2
-        hint_y = HEIGHT // 2 + 150
-        self.surface.blit(hint_text, (hint_x, hint_y))
-    
-    def draw_button(self, rect, text, hovered, base_color):
-        """Draw a single button"""
-        # Button color (brighter when hovered)
-        if hovered:
-            color = tuple(min(c + 40, 255) for c in base_color)
-        else:
-            color = base_color
-        
-        # Draw button background
-        pygame.draw.rect(self.surface, color, rect, border_radius=10)
-        
-        # Draw border
-        border_color = WHITE if hovered else (150, 150, 150)
-        pygame.draw.rect(self.surface, border_color, rect, 3, border_radius=10)
-        
-        # Draw text
-        text_surf = self.font_medium.render(text, True, WHITE)
-        text_rect = text_surf.get_rect(center=rect.center)
-        
-        # Text shadow
-        shadow_surf = self.font_medium.render(text, True, BLACK)
-        shadow_rect = shadow_surf.get_rect(center=(rect.centerx + 2, rect.centery + 2))
-        
-        self.surface.blit(shadow_surf, shadow_rect)
-        self.surface.blit(text_surf, text_rect)
-        
+
 class Environment:
-    """Environment for normal gameplay (human vs human, or human vs AI demo)"""
     def __init__(self, surface, car_color1=None, car_color2=None):
         self.surface = surface
         self.grass = pygame.image.load(GRASS).convert()
@@ -157,7 +22,6 @@ class Environment:
         self.game_state = "countdown"
         self.previous_state = None
 
-        # Car setup
         self.car1_active = car_color1 is not None
         self.car2_active = car_color2 is not None
         self.car1_finished = False
@@ -166,20 +30,16 @@ class Environment:
         start_x, start_y = CAR_START_POS
         self.setup_cars(start_x, start_y, car_color1, car_color2)
 
-        # Obstacles
         self.num_obstacles = NUM_OBSTACLES
         self.obstacle_group = pygame.sprite.Group()
         self.generate_obstacles()
 
-        # Track
         self.setup_track()
 
-        # Timers
         self.car1_time = TARGET_TIME if self.car1_active else 0
         self.car2_time = TARGET_TIME if self.car2_active else 0
         self.remaining_time = max(self.car1_time, self.car2_time)
 
-        # Sound
         self.setup_sound()
         
         self.pause_menu = PauseMenu(surface)
@@ -188,15 +48,14 @@ class Environment:
         self.all_sprites = pygame.sprite.Group()
 
         if self.car1_active and self.car2_active:
-            # 2-player mode - use fair start positions
+            # 2 player - fair positions
             self.car1 = Car(*CAR1_FAIR_START, car_color1)
             self.car2 = Car(*CAR2_FAIR_START, car_color2)
         else:
-            # Single player mode - always use same position
+            # single player
             if self.car1_active:
                 self.car1 = Car(start_x, start_y, car_color1)
             if self.car2_active:
-                # Player 2 solo should use same position as player 1 would
                 self.car2 = Car(start_x, start_y, car_color2)
 
         if self.car1_active:
@@ -242,24 +101,19 @@ class Environment:
             self.game_state = "running"
             self.handle_music(play=True)
 
-
-    def restart_game(self):        
+    def restart_game(self):
         if self.car1_active:
             if self.car2_active:
-                # 2-player: use fair positions
                 self.car1.reset(*CAR1_FAIR_START)
             else:
-                # Single player: use default
                 self.car1.reset(*CAR_START_POS)
             self.car1_finished = False
             self.car1_time = TARGET_TIME
 
         if self.car2_active:
             if self.car1_active:
-                # 2-player: use fair positions
                 self.car2.reset(*CAR2_FAIR_START)
             else:
-                # Single player: use default
                 self.car2.reset(*CAR_START_POS)
             self.car2_finished = False
             self.car2_time = TARGET_TIME
@@ -293,7 +147,6 @@ class Environment:
                 self.handle_music(play=False)
 
             return True
-
         return False
 
     def update(self):
@@ -315,16 +168,13 @@ class Environment:
             self.check_game_end_condition()
 
     def move(self, action1, action2):
-        """
-        Execute actions and return step information for both cars.
-        """
         if self.game_state != "running":
             return False, {}, {}
 
         car1_info = {'collision': False, 'finished': False, 'hit_obstacle': False}
         car2_info = {'collision': False, 'finished': False, 'hit_obstacle': False}
 
-        # Car 1
+        # car 1
         if self.car1_active and not self.car1_finished and not self.car1.failed and self.car1_time > 0:
             pre_failed = self.car1.failed
             pre_finished = self.car1_finished
@@ -342,7 +192,7 @@ class Environment:
                 'hit_obstacle': hit_obstacle
             }
 
-        # Car 2
+        # car 2
         if self.car2_active and not self.car2_finished and not self.car2.failed and self.car2_time > 0:
             pre_failed = self.car2.failed
             pre_finished = self.car2_finished
@@ -364,16 +214,13 @@ class Environment:
         return done, car1_info, car2_info
 
     def check_single_car_obstacle(self, car, pre_velocity):
-        """Check if a single car hit an obstacle and apply velocity reduction."""
-        for obstacle in self.obstacle_group.sprites():
-            if pygame.sprite.collide_mask(car, obstacle):
-                car.velocity *= OBSTACLE_VELOCITY_REDUCTION
-                self.obstacle_sound.play()
-                obstacle.kill()
-                return pre_velocity > 1.0
+        hit = pygame.sprite.spritecollide(car, self.obstacle_group, True, pygame.sprite.collide_mask)
+        if hit:
+            car.velocity *= OBSTACLE_VELOCITY_REDUCTION
+            self.obstacle_sound.play()
+            return pre_velocity > 1.0
         return False
-
-    # Update the toggle_pause method:
+    
     def toggle_pause(self):
         if self.game_state == "running":
             self.previous_state = self.game_state
@@ -383,7 +230,6 @@ class Environment:
             self.game_state = self.previous_state
             self.handle_music(play=True)
 
-# Update the draw method to use the new pause menu:
     def draw(self):
         self.surface.blits((
             (self.grass, (0, 0)),
@@ -402,11 +248,9 @@ class Environment:
         elif self.game_state == "failed":
             draw_failed(self)
         elif self.game_state == "paused":
-            # Use new pause menu instead
             self.pause_menu.draw()
             
     def check_single_car_finish(self, car, was_finished):
-        """Check if a car just crossed the finish line."""
         if was_finished or car.failed:
             return False
         
@@ -425,7 +269,6 @@ class Environment:
         return False
 
     def check_single_car_collision(self, car, was_failed):
-        """Check if a car just crashed."""
         if was_failed:
             return False
         
@@ -497,9 +340,8 @@ class Environment:
                 pygame.mixer.music.pause()
             self.is_music_playing = False
 
-    # In Environment.py, replace the get_state method (lines 514-547):
-
     def get_state(self, car_num=1):
+        # get state for ai player
         if car_num == 1:
             if not self.car1_active:
                 return None
@@ -513,23 +355,17 @@ class Environment:
         
         car.cast_rays(self.track_border_mask, self.obstacle_group)
 
-        # Normalize rays
         norm_wall_rays = car.wall_distances / car.ray_length
         norm_bomb_rays = car.bomb_distances / car.ray_length
-        
-        # Normalized velocity
         norm_vel = max(0.0, car.velocity / car.max_velocity)
-        
-        # Car orientation
         angle_rad = np.radians(car.angle)
         
-        # Combine state - 33 dimensions total
         state = np.concatenate([
-            norm_wall_rays,              # 15 values (0-14)
-            norm_bomb_rays,              # 15 values (15-29)
-            [norm_vel],                  # 1 value (30)
-            [np.sin(angle_rad)],        # 1 value (31)
-            [np.cos(angle_rad)]         # 1 value (32)
+            norm_wall_rays,
+            norm_bomb_rays,
+            [norm_vel],
+            [np.sin(angle_rad)],
+            [np.cos(angle_rad)]
         ]).astype(np.float32)
         
         return state

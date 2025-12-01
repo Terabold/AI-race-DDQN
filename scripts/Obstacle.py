@@ -1,3 +1,4 @@
+# bombs - randomly placed obstacles that slow you down
 import pygame
 from scripts.Constants import BOMB, OBSTACLE_SIZE, OBSTACLE_HITBOX, BOMB_LIST
 import random
@@ -10,11 +11,11 @@ class Obstacle(pygame.sprite.Sprite):
             self.image = pygame.image.load(BOMB).convert_alpha() 
             self.image = pygame.transform.scale(self.image, OBSTACLE_SIZE)
         else:
-            # AI training mode - just show hitbox
+            # training mode - just red box
             self.image = pygame.Surface(OBSTACLE_SIZE, pygame.SRCALPHA)
             pygame.draw.rect(self.image, (255, 0, 0), OBSTACLE_HITBOX)
         
-        # Hitbox (same for both)
+        # hitbox same for both
         self.mask_surface = pygame.Surface(OBSTACLE_SIZE, pygame.SRCALPHA) 
         pygame.draw.rect(self.mask_surface, (255, 255, 255), OBSTACLE_HITBOX)
         self.mask = pygame.mask.from_surface(self.mask_surface)  

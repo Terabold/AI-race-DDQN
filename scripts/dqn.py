@@ -1,10 +1,6 @@
-"""
-DQN.PY - The AI's "brain"
-A neural network that learns to predict which action is best
-Input: Car sensors (30 values) + speed + angle = 33 values
-Output: Score for each of 9 possible actions
-"""
-
+# the neural network - המוח של הAI
+# input: 33 numbers (rays + speed + direction)
+# output: 9 action scores
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -16,22 +12,22 @@ class DQN(nn.Module):
         super(DQN, self).__init__()
         self.device = device if device else torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         
-        # Three layers: input -> hidden -> hidden -> output
-        self.fc1 = nn.Linear(state_dim, hidden_dim)   # 33 -> 128
-        self.fc2 = nn.Linear(hidden_dim, hidden_dim)  # 128 -> 128
-        self.fc3 = nn.Linear(hidden_dim, action_dim)  # 128 -> 9
+        # simple 3-layer network: 33 -> 128 -> 128 -> 9
+        self.fc1 = nn.Linear(state_dim, hidden_dim)
+        self.fc2 = nn.Linear(hidden_dim, hidden_dim)
+        self.fc3 = nn.Linear(hidden_dim, action_dim)
         
     def forward(self, x):
-        """Run input through network, get action scores"""
+        # numpy to tensor if needed
         if isinstance(x, np.ndarray):
             x = torch.FloatTensor(x).to(self.device)
         else:
             x = x.to(self.device)
         
-        # LeakyReLU activation (allows small negative values)
+        # leaky relu keeps small gradient for negative values
         x = F.leaky_relu(self.fc1(x))
         x = F.leaky_relu(self.fc2(x))
-        return self.fc3(x)  # Raw scores (Q-values)
+        return self.fc3(x)  # raw q-values, no activation
     
     def save(self, filepath):
         torch.save(self.state_dict(), filepath)
