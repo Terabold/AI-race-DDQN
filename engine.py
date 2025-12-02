@@ -1,6 +1,6 @@
 # main loop - switches between screens
 import pygame
-from scripts.Constants import FPS, MENUBG
+from scripts.Constants import FPS, MENUBG, WIDTH, HEIGHT
 from scripts.Game import Game
 from scripts.menu import MainMenu, RaceSettingsMenu, TesterSettingsMenu
 from scripts.GameManager import game_state_manager
@@ -12,11 +12,11 @@ class Engine:
         pygame.init()
         pygame.joystick.quit()  # no controller
         pygame.display.set_caption('DDQN RACE')
-        self.display = pygame.display.set_mode((1600, 900))
+        self.display = pygame.display.set_mode((WIDTH, HEIGHT))
         self.clock = pygame.time.Clock()
         
         self.menu_bg = pygame.transform.scale(
-            pygame.image.load(MENUBG), (1600, 900)
+            pygame.image.load(MENUBG), (WIDTH, HEIGHT)
         )
         
         self.game = Game(self.display, self.clock)

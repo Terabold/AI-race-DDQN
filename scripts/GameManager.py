@@ -1,5 +1,4 @@
 # tracks game state and settings
-
 class GameStateManager:
     def __init__(self):
         self.state = 'menu'
@@ -16,6 +15,5 @@ class GameStateManager:
         
     def getState(self):
         return self.state
-
 
 game_state_manager = GameStateManager()

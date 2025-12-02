@@ -1,12 +1,12 @@
 # main gameplay environment - with sounds, countdown, 2-player support
 import pygame
 import numpy as np
-from scripts.Constants import (FONT, GRASS, TRACK, TRACK_BORDER, FINISHLINE, FINISHLINE_SIZE, 
+from scripts.Constants import (GRASS, TRACK, TRACK_BORDER, FINISHLINE, FINISHLINE_SIZE, 
                                FINISHLINE_POS, CAR_START_POS, CAR1_FAIR_START, CAR2_FAIR_START, 
                                NUM_OBSTACLES, COLLIDE_SOUND, WIN_SOUND, OBSTACLE_SOUND, COUNTDOWN_SOUND,
                                BACKGROUND_MUSIC, COLLISION_SOUND_VOLUME, WIN_SOUND_VOLUME, OBSTACLE_SOUND_VOLUME,
-                               COUNTDOWN_SOUND_VOLUME, DEFAULT_SOUND_VOLUME, OBSTACLE_VELOCITY_REDUCTION, WIDTH,
-                               HEIGHT, TARGET_TIME, FPS)
+                               COUNTDOWN_SOUND_VOLUME, DEFAULT_SOUND_VOLUME, OBSTACLE_VELOCITY_REDUCTION, 
+                               TARGET_TIME, FPS)
 from scripts.Car import Car
 from scripts.Obstacle import Obstacle
 from scripts.utils import draw_finished, draw_failed, draw_ui, draw_countdown, load_sound
