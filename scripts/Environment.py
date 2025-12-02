@@ -141,7 +141,6 @@ class Environment:
             if any_finished:
                 self.game_state = "finished"
                 self.handle_music(play=False)
-                self.win_sound.play()
             else:
                 self.game_state = "failed"
                 self.handle_music(play=False)

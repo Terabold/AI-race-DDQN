@@ -71,10 +71,14 @@ def draw_game_overlay(environment, title, title_color, overlay_tint=None):
         (environment.car2_active, environment.car2_finished, car2)
     ], 1):
         if active and car is not None:
-            if title == "Race Failed!":
-                status = "Crashed!" if car.failed else "Time Up!"
+            # Prefer explicit per-car state detection so each player's result
+            # is shown correctly even if the overall game title is "Race Finished!".
+            if getattr(car, 'failed', False):
+                status = "Crashed!"
+            elif finished:
+                status = "Finished!"
             else:
-                status = "Finished!" if finished else "Time Up!"
+                status = "Time Up!"
             
             color = DODGERBLUE if player_num == 1 else RED
             text = create_shadowed_text(f"Player {player_num}: {status}", font_scale(42, FONT), color)
