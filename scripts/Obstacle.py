@@ -1,14 +1,22 @@
 # bombs - randomly placed obstacles that slow you down
 import pygame
 from scripts.Constants import BOMB, OBSTACLE_SIZE, OBSTACLE_HITBOX, BOMB_LIST
+from scripts.ResourceLoader import resource_manager
 import random
 
 class Obstacle(pygame.sprite.Sprite):
+    """
+    Bomb obstacles that slow the car when hit.
+    
+    show_image=True: Full bomb sprite (gameplay mode)
+    show_image=False: Red hitbox only (training mode - faster)
+    """
+    
     def __init__(self, x, y, show_image=True):
         super().__init__()
         self.show_image = show_image
         if show_image:
-            self.image = pygame.image.load(BOMB).convert_alpha() 
+            self.image = resource_manager.images['bomb']
             self.image = pygame.transform.scale(self.image, OBSTACLE_SIZE)
         else:
             # training mode - just red box

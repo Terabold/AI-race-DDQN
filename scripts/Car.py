@@ -3,16 +3,27 @@ import math
 import pygame
 import numpy as np
 from pygame.math import Vector2
-from scripts.Constants import CAR_COLORS, MAXSPEED, ROTATESPEED, ACCELERATION, GREEN, YELLOW
+from scripts.Constants import MAXSPEED, ROTATESPEED, ACCELERATION, GREEN, YELLOW
+from scripts.ResourceLoader import resource_manager
 
 class Car(pygame.sprite.Sprite):
+    """
+    The player's car - handles physics, movement, and AI raycasting sensors.
+    
+    Raycasting: 15 rays (-90 to +90 degrees) detect walls and obstacles.
+    Wall rays = detect borders only, bomb rays = detect borders + obstacles.
+    Used by AI to "see" the track.
+    """
+    
     def __init__(self, x, y, car_color="Red"):
         super().__init__()
         self.position = Vector2(x, y)
         self.car_color = car_color
 
-        self.img = pygame.image.load(CAR_COLORS[car_color]).convert_alpha()
-        self.image = pygame.transform.scale(self.img, (19, 38))
+        # Get car image from ResourceManager (already loaded at startup)
+        original_img = resource_manager.images[f'car_{car_color}_original']
+        # Scale to gameplay size (different from menu display size)
+        self.image = pygame.transform.scale(original_img, (19, 38))
         self.original_image = self.image
         self.rect = self.image.get_rect(center=self.position)
         self.mask = pygame.mask.from_surface(self.image)  # pixel-perfect collision
@@ -57,9 +68,12 @@ class Car(pygame.sprite.Sprite):
         ], dtype=np.float32)
 
     def cast_rays(self, border_mask, obstacle_group=None):
-        # shoot rays every frame to see surroundings
+        """
+        Shoot sensor rays to detect surroundings.
+        Results stored in wall_distances and bomb_distances arrays (0-400 pixels).
+        """
         car_rotation = -self.angle
-        step = 15  # check every 15px
+        step = 15  # check every 15px for performance
         width, height = border_mask.get_size()
         
         self.cast_wall_rays(border_mask, car_rotation, step, width, height)

@@ -1,9 +1,5 @@
 # constants - all the magic numbers in one place
 import numpy as np
-import pygame
-
-pygame.init()
-info = pygame.display.Info()
 
 FPS = 60
 WIDTH, HEIGHT = 1600, 900

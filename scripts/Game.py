@@ -7,6 +7,7 @@ from scripts.Environment import Environment
 from scripts.Human_Agent import HumanAgent  
 from scripts.dqn_agent import DQNAgent
 from scripts.GameManager import game_state_manager
+from scripts.ResourceLoader import resource_manager
 
 
 class Game:
@@ -38,10 +39,18 @@ class Game:
         if player_type == "Human":
             return HumanAgent(player_num)
         elif player_type == "DQN":
-            agent = DQNAgent()
-            if os.path.exists(agent.model_path):
+            agent = DQNAgent(device=resource_manager.device)
+            
+            # Use preloaded checkpoint from ResourceManager
+            checkpoint = resource_manager.model_checkpoint
+            if checkpoint:
+                agent.policy_net.load_state_dict(checkpoint['model_state_dict'])
+                agent.target_net.load_state_dict(checkpoint['target_state_dict'])
+            elif os.path.exists(agent.model_path):
+                # Fallback: load full model if inference not available
                 agent.load_model(agent.model_path)
-            agent.epsilon = INFERENCE_EPSILON  # small randomness
+            
+            agent.epsilon = INFERENCE_EPSILON
             agent.policy_net.eval()
             agent.target_net.eval()
             return agent

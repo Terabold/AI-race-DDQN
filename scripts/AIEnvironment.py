@@ -2,13 +2,25 @@
 # runs thousands of episodes fast
 import pygame
 import numpy as np
-from scripts.Constants import *
+from scripts.Constants import (CAR_START_POS, NUM_OBSTACLES, FINISHLINE_POS, 
+                               TARGET_TIME, FPS, OBSTACLE_VELOCITY_REDUCTION,
+                               CHECKPOINT_CENTERS, UI_FONT_SIZE, FONT,
+                               UI_COLOR, SHADOW_COLOR, MARGIN_X, MARGIN_Y_TOP, LINE_HEIGHT,
+                               GREEN, YELLOW, RED, WHITE)
 from scripts.Car import Car
 from scripts.Obstacle import Obstacle
 from scripts.checkpoint import CheckpointManager
+from scripts.ResourceLoader import resource_manager
 
 
 class AIEnvironment:
+    """
+    Simplified training environment - no sounds, no countdown.
+    
+    Runs thousands of episodes fast for training the DQN agent.
+    Single car only, uses checkpoints for reward calculation.
+    """
+    
     def __init__(self, surface):
         self.surface = surface
         self.car = Car(*CAR_START_POS, "Red")
@@ -32,14 +44,13 @@ class AIEnvironment:
         self.prev_checkpoint_distance = 0.0
         
     def setup_track(self):
-        self.track_border = pygame.image.load(TRACK_BORDER).convert_alpha()
-        self.track_border_mask = pygame.mask.from_surface(self.track_border)
-        self.finish_line = pygame.transform.scale(
-            pygame.image.load(FINISHLINE).convert_alpha(),
-            FINISHLINE_SIZE
-        )
+        # Get all track assets from ResourceManager (loaded once at startup)
+        self.track_border = resource_manager.images['track_border']
+        self.track_border_mask = resource_manager.track_border_mask
+        
+        self.finish_line = resource_manager.images['finishline']
         self.finish_line_position = FINISHLINE_POS
-        self.finish_mask = pygame.mask.from_surface(self.finish_line)
+        self.finish_mask = resource_manager.images['finishline_mask']
 
     def generate_obstacles(self):
         obstacle_generator = Obstacle(0, 0, show_image=False)

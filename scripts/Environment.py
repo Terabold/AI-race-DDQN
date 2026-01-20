@@ -1,23 +1,30 @@
 # main gameplay environment - with sounds, countdown, 2-player support
 import pygame
 import numpy as np
-from scripts.Constants import (GRASS, TRACK, TRACK_BORDER, FINISHLINE, FINISHLINE_SIZE, 
-                               FINISHLINE_POS, CAR_START_POS, CAR1_FAIR_START, CAR2_FAIR_START, 
-                               NUM_OBSTACLES, COLLIDE_SOUND, WIN_SOUND, OBSTACLE_SOUND, COUNTDOWN_SOUND,
-                               BACKGROUND_MUSIC, COLLISION_SOUND_VOLUME, WIN_SOUND_VOLUME, OBSTACLE_SOUND_VOLUME,
-                               COUNTDOWN_SOUND_VOLUME, DEFAULT_SOUND_VOLUME, OBSTACLE_VELOCITY_REDUCTION, 
-                               TARGET_TIME, FPS)
+from scripts.Constants import (FINISHLINE_POS, CAR_START_POS, CAR1_FAIR_START, CAR2_FAIR_START, 
+                               NUM_OBSTACLES, OBSTACLE_VELOCITY_REDUCTION, 
+                               TARGET_TIME, FPS, DEFAULT_SOUND_VOLUME)
 from scripts.Car import Car
 from scripts.Obstacle import Obstacle
-from scripts.utils import draw_finished, draw_failed, draw_ui, draw_countdown, load_sound
+from scripts.utils import draw_finished, draw_failed, draw_ui, draw_countdown
 from scripts.GameManager import game_state_manager
 from scripts.menu import PauseMenu
+from scripts.ResourceLoader import resource_manager
 
 
 class Environment:
+    """
+    Main gameplay environment for human play and AI inference.
+    
+    Supports 1-2 players (Human or DQN AI), handles collisions, 
+    finish line detection, obstacles, countdown, and pause.
+    
+    Game states: "countdown" -> "running" -> "finished"/"failed"/"paused"
+    """
+    
     def __init__(self, surface, car_color1=None, car_color2=None):
         self.surface = surface
-        self.grass = pygame.image.load(GRASS).convert()
+        self.grass = resource_manager.images['grass']
 
         self.game_state = "countdown"
         self.previous_state = None
@@ -64,16 +71,14 @@ class Environment:
             self.all_sprites.add(self.car2)
 
     def setup_track(self):
-        self.track = pygame.image.load(TRACK).convert_alpha()
-        self.track_border = pygame.image.load(TRACK_BORDER).convert_alpha()
-        self.track_border_mask = pygame.mask.from_surface(self.track_border)
+        # Get all track assets from ResourceManager (loaded once at startup)
+        self.track = resource_manager.images['track']
+        self.track_border = resource_manager.images['track_border']
+        self.track_border_mask = resource_manager.track_border_mask
 
-        self.finish_line = pygame.transform.scale(
-            pygame.image.load(FINISHLINE).convert_alpha(),
-            FINISHLINE_SIZE
-        )
+        self.finish_line = resource_manager.images['finishline']
         self.finish_line_position = FINISHLINE_POS
-        self.finish_mask = pygame.mask.from_surface(self.finish_line)
+        self.finish_mask = resource_manager.images['finishline_mask']
 
     def generate_obstacles(self):
         obstacle_generator = Obstacle(0, 0, show_image=True)
@@ -167,6 +172,15 @@ class Environment:
             self.check_game_end_condition()
 
     def move(self, action1, action2):
+        """
+        Process one frame of car movement for both players.
+        
+        Actions: 0=none, 1=forward, 2=back, 3=left, 4=right,
+                 5=forward+left, 6=forward+right, 7=back+left, 8=back+right
+        
+        Returns: (done, car1_info, car2_info) where info contains
+                 collision/finished/hit_obstacle booleans
+        """
         if self.game_state != "running":
             return False, {}, {}
 
@@ -293,9 +307,16 @@ class Environment:
         return False
 
     def handle_car_movement(self, car, action):
+        """
+        Apply action to car.
+        
+        Actions: 0=none, 1=forward, 2=back, 3=left, 4=right,
+                 5=forward+left, 6=forward+right, 7=back+left, 8=back+right
+        """
         if action is None:
             return
 
+        # Actions that involve movement (not just turning)
         moving = action in [1, 2, 5, 6, 7, 8]
 
         if action in [3, 5, 7]:
@@ -312,14 +333,15 @@ class Environment:
             car.reduce_speed()
 
     def setup_sound(self):
-        self.collide_sound = load_sound(COLLIDE_SOUND, volume=COLLISION_SOUND_VOLUME)
-        self.win_sound = load_sound(WIN_SOUND, volume=WIN_SOUND_VOLUME)
-        self.obstacle_sound = load_sound(OBSTACLE_SOUND, volume=OBSTACLE_SOUND_VOLUME)
-        self.countdown_sound = load_sound(COUNTDOWN_SOUND, volume=COUNTDOWN_SOUND_VOLUME)
+        # Get all sounds from ResourceManager (loaded once at startup)
+        self.collide_sound = resource_manager.sounds['collision']
+        self.win_sound = resource_manager.sounds['win']
+        self.obstacle_sound = resource_manager.sounds['obstacle']
+        self.countdown_sound = resource_manager.sounds['countdown']
 
         self.is_music_playing = False
         
-        pygame.mixer.music.load(BACKGROUND_MUSIC)
+        pygame.mixer.music.load(resource_manager.sounds['background_music_path'])
         pygame.mixer.music.set_volume(DEFAULT_SOUND_VOLUME)
 
     def handle_music(self, play=True):
@@ -327,16 +349,15 @@ class Environment:
             return
 
         if play:
+            # Resume or start music
             if pygame.mixer.music.get_busy():
                 pygame.mixer.music.unpause()
-                self.is_music_playing = True
             else:
-                if not self.is_music_playing:
-                    pygame.mixer.music.play(-1)
-                    self.is_music_playing = True
+                pygame.mixer.music.play(-1)
+            self.is_music_playing = True
         else:
-            if pygame.mixer.music.get_busy():
-                pygame.mixer.music.pause()
+            # Pause music
+            pygame.mixer.music.pause()
             self.is_music_playing = False
 
     def get_state(self, car_num=1):

@@ -13,6 +13,13 @@ ACTION_DIM = 9   # nothing/forward/back/left/right/combos
 
 
 class DQNAgent:
+    """
+    Double DQN Agent with experience replay.
+    
+    Uses two networks: policy_net (learning) and target_net (stable copy).
+    Epsilon-greedy exploration: starts random, gradually learns to exploit.
+    """
+    
     def __init__(self, device=None):
         self.device = device if device else torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         print(f"Using device: {self.device}")
@@ -162,7 +169,6 @@ class DQNAgent:
                 if attempt < 2:
                     time.sleep(0.1)
                 else:
-                    print("Warning: Could not save (file locked)")
                     if os.path.exists(tmp):
                         try:
                             os.remove(tmp)
@@ -173,7 +179,7 @@ class DQNAgent:
         if filepath is None:
             filepath = self.model_path
         if not os.path.exists(filepath):
-            print("No model file found.")
+            print("NO MODEL FOUND")
             return False
 
         checkpoint = torch.load(filepath, map_location=self.device, weights_only=False)
@@ -200,5 +206,5 @@ class DQNAgent:
         if 'replay_buffer' in checkpoint and checkpoint['replay_buffer']:
             self.replay_buffer = replaybuffer_from_dict(checkpoint['replay_buffer'])
 
-        print(f"Loaded: ep={self.episode_count}, eps={self.epsilon:.3f}, best={self.best_finish_time:.1f}s")
+        print(f"Loaded model: ep={self.episode_count}, best={self.best_finish_time:.1f}s")
         return True

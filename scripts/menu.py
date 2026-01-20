@@ -1,15 +1,18 @@
 # all the menus
 import pygame
 import sys
-from scripts.Constants import FONT, WHITE, BLACK, COLORS, CAR_COLORS, CAR_COLORS_LIST, GOLD, WIDTH, HEIGHT
+from scripts.Constants import FONT, WHITE, BLACK, COLORS, CAR_COLORS, CAR_COLORS_LIST, WIDTH, HEIGHT
 from scripts.utils import Button, calculate_ui_constants
 from scripts.GameManager import game_state_manager
-from pathlib import Path
+from scripts.ResourceLoader import resource_manager
+# from pathlib import Path
 
 
-# base class
+# Base class for all menu screens
 
 class BaseMenuScreen:
+    """Base menu screen with common button handling and drawing."""
+    
     def __init__(self, screen, title="Menu"):
         self.screen = screen
         self.title = title
@@ -110,9 +113,11 @@ class BaseMenuScreen:
         self.draw()
 
 
-# main menu
+# Main menu - play, train, quit
 
 class MainMenu(BaseMenuScreen):
+    """Main menu screen with Play, Train AI, and Quit buttons."""
+    
     def __init__(self, screen):
         super().__init__(screen, "RACING GAME")
     
@@ -126,7 +131,6 @@ class MainMenu(BaseMenuScreen):
         buttons = [
             ('PLAY', lambda: game_state_manager.setState('settings'), None),
             ('TRAIN AI', lambda: game_state_manager.setState('training'), (70, 100, 180)),
-            ('TEST AI', lambda: game_state_manager.setState('tester_settings'), (180, 100, 70)),
             ('QUIT', self._quit, (200, 50, 50))
         ]
         
@@ -138,9 +142,11 @@ class MainMenu(BaseMenuScreen):
         sys.exit()
 
 
-# race settings
+# Race settings - player selection and car colors
 
 class RaceSettingsMenu(BaseMenuScreen):
+    """Race settings: select player types (Human/DQN) and car colors."""
+    
     def __init__(self, screen):
         self.car_images = {}
         self.p1_type_btns = []
@@ -152,12 +158,10 @@ class RaceSettingsMenu(BaseMenuScreen):
     
     def load_car_image(self, color):
         if color not in self.car_images:
-            path = Path(CAR_COLORS[color])
-            if path.exists():
-                img = pygame.image.load(path)
-                img = pygame.transform.rotate(img, 90)
-                self.car_images[color] = pygame.transform.scale(img, (100, 50))
-        return self.car_images.get(color)
+            key = f'car_{color}'
+            img = resource_manager.images[key]
+            self.car_images[color] = pygame.transform.scale(img, (100, 50))
+        return self.car_images[color]
     
     def initialize(self):
         self.buttons.clear()
@@ -332,86 +336,13 @@ class RaceSettingsMenu(BaseMenuScreen):
             self.screen.blit(key_text, key_text.get_rect(center=(x + 45, key_row_y_position)))
 
 
-# tester settings
-
-class TesterSettingsMenu(BaseMenuScreen):
-    def __init__(self, screen):
-        self.num_cars = 10
-        self.preset_btns = []
-        self.header_font = pygame.font.Font(FONT, int(screen.get_height() * 0.025))
-        self.info_font = pygame.font.Font(FONT, int(screen.get_height() * 0.02))
-        self.count_font = pygame.font.Font(FONT, int(screen.get_height() * 0.08))
-        super().__init__(screen, "AI Performance Test")
-    
-    def initialize(self):
-        self.buttons.clear()
-        self.preset_btns.clear()
-        
-        screen_width, screen_height = self.screen.get_size()
-        center_x = screen_width // 2
-        button_width = int(screen_width * 0.12)
-        
-        presets = [1, 5, 10, 25, 50, 100]
-        preset_buttons_y = int(screen_height * 0.35)
-        
-        # Calculate total width to center the group of buttons
-        total_buttons_width = len(presets) * button_width + (len(presets) - 1) * 20
-        buttons_start_x = center_x - total_buttons_width // 2
-        
-        for i, num in enumerate(presets):
-            x = buttons_start_x + i * (button_width + 20)
-            btn = self.create_button(str(num), lambda n=num: self.set_count(n),
-                                    x, preset_buttons_y, button_width, (70, 100, 180))
-            btn.preset_value = num
-            self.preset_btns.append(btn)
-        
-        self.create_button("Test", self.start_test, center_x - 150, int(screen_height * 0.85), 300, (70, 180, 70))
-        self.create_button("←", lambda: game_state_manager.setState('menu'),
-                          int(screen_width * 0.02), int(screen_height * 0.02), int(screen_width * 0.08))
-    
-    def set_count(self, num):
-        self.num_cars = num
-    
-    def start_test(self):
-        game_state_manager.tester_num_cars = self.num_cars
-        game_state_manager.setState('tester')
-    
-    def on_escape(self):
-        game_state_manager.setState('menu')
-    
-    def draw(self):
-        self.draw_title()
-        
-        w, h = self.screen.get_size()
-        
-        for i, line in enumerate([
-            "Select number of AI cars to test performance",
-            "All cars will race simultaneously using trained AI model",
-        ]):
-            text = self.info_font.render(line, True, (200, 200, 200))
-            self.screen.blit(text, text.get_rect(center=(w//2, int(h * 0.18) + i * 30)))
-        
-        label = self.header_font.render("Preset Amounts", True, WHITE)
-        self.screen.blit(label, label.get_rect(center=(w//2, int(h * 0.28))))
-        
-        count_y = int(h * 0.55)
-        count_text = f"{self.num_cars} Cars"
-        count_shadow = self.count_font.render(count_text, True, BLACK)
-        count_surf = self.count_font.render(count_text, True, GOLD)
-        self.screen.blit(count_shadow, count_shadow.get_rect(center=(w//2 + 3, count_y + 3)))
-        self.screen.blit(count_surf, count_surf.get_rect(center=(w//2, count_y)))
-        
-        for btn in self.preset_btns:
-            selected = self.num_cars == btn.preset_value
-            self.draw_button(btn, selected)
-        
-        for btn in self.buttons[-2:]:
-            self.draw_button(btn)
 
 
-# pause menu
+# Pause menu - overlay during gameplay
 
 class PauseMenu:
+    """Pause overlay with Resume and Back buttons."""
+    
     def __init__(self, surface):
         self.surface = surface
         self.font_large = pygame.font.Font(FONT, 70)

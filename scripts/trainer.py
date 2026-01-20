@@ -27,7 +27,7 @@ class Trainer:
         self.environment = None
         self.agent = None
         self.initialized = False
-        self.wandb_enabled = True
+        self.wandb_enabled = False
         
         self.steps = 0
         self.episode_reward = 0.0
@@ -61,10 +61,6 @@ class Trainer:
     def initialize(self):
         if self.initialized:
             return
-            
-        print("\n" + "="*80)
-        print("TRAINING MODE")
-        print("="*80)
         
         pygame.mixer.quit()
         
@@ -315,7 +311,6 @@ class Trainer:
         pygame.display.update()
     
     def return_to_menu(self):
-        print("\nReturning to menu...")
         self.agent.save_model()
         if self.wandb_enabled:
             try:
@@ -328,7 +323,6 @@ class Trainer:
         game_state_manager.setState('menu')
     
     def save_and_exit(self):
-        print("\nSaving and exiting...")
         if self.agent:
             self.agent.save_model()
             elapsed = time.time() - self.start_time

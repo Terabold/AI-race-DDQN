@@ -1,5 +1,12 @@
-# tracks game state and settings
+# Tracks global game state and player settings
+
 class GameStateManager:
+    """
+    Global state manager for game flow and player settings.
+    
+    States: 'menu' -> 'settings' -> 'game' or 'training'
+    """
+    
     def __init__(self):
         self.state = 'menu'
         
@@ -7,8 +14,6 @@ class GameStateManager:
         self.player2_selection = None
         self.player1_car_color = "Blue"
         self.player2_car_color = "Red"
-        
-        self.tester_num_cars = 10
         
     def setState(self, new_state):
         self.state = new_state

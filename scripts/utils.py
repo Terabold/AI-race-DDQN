@@ -1,15 +1,13 @@
 # utility functions - ui stuff, buttons, overlays
 import pygame
 import math
-from scripts.Constants import FONT, COUNTDOWN_FONT, WIDTH, HEIGHT, BLACK, WHITE, RED, GREEN, DODGERBLUE, DEFAULT_SOUND_VOLUME
-from pathlib import Path
+from scripts.Constants import FONT, COUNTDOWN_FONT, WIDTH, HEIGHT, BLACK, WHITE, RED, GREEN, DODGERBLUE
+from scripts.ResourceLoader import resource_manager
 
 
-_fonts = {}
 def font_scale(size, Font=FONT):
-    if (size, Font) not in _fonts:
-        _fonts[(size, Font)] = pygame.font.Font(Font, size)
-    return _fonts[(size, Font)]
+    """Get font from ResourceManager's cache"""
+    return resource_manager.get_font(Font, size)
 
 
 def create_shadowed_text(text, font, color, shadow_color=BLACK, offset=4):
@@ -24,14 +22,6 @@ def create_shadowed_text(text, font, color, shadow_color=BLACK, offset=4):
 def smooth_sine_wave(time, period=4.0, min_val=0.0, max_val=1.0):
     normalized = (math.cos(time * (2 * math.pi / period)) + 1) / 2
     return min_val + normalized * (max_val - min_val)
-
-
-def load_sound(path, volume=DEFAULT_SOUND_VOLUME):
-    if not pygame.mixer.get_init():
-        pygame.mixer.init()
-    sound = pygame.mixer.Sound(str(Path(path)))
-    sound.set_volume(volume)
-    return sound
 
 
 def calculate_ui_constants(display_size):
