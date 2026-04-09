@@ -1,6 +1,5 @@
-# rewards - teaches the ai what's good and bad
-# positive = good, negative = bad
-# delta based: reward CHANGE not just position
+# delta based: מה המצב שלו בהתאם למצב הקודם
+# חיובי = טוב, שלילי = רע
 
 
 def calculate_reward(environment, step_info, prev_state=None):
@@ -8,7 +7,7 @@ def calculate_reward(environment, step_info, prev_state=None):
     breakdown = {}
     car = environment.car
     
-    # 1. checkpoint progress - most important
+    # תגמול על מרחק התקדמות לעבר הצ'קפוינט הבא
     if environment.checkpoint_manager.current_idx < environment.checkpoint_manager.total_checkpoints:
         distance_delta = environment.prev_checkpoint_distance - environment.current_checkpoint_distance
         
@@ -21,7 +20,7 @@ def calculate_reward(environment, step_info, prev_state=None):
         reward += progress
         breakdown["progress"] = progress
     
-    # 2. wall safety
+    # מרחק מן הקירות מצומצם לבדיקת הקרן הקרובה ביותר
     if prev_state is not None and len(car.wall_distances) > 0:
         prev_wall = prev_state[:15].min()
         curr_wall = (car.wall_distances / car.ray_length).min()
@@ -32,13 +31,13 @@ def calculate_reward(environment, step_info, prev_state=None):
         else:
             wall_reward = wall_delta * 5.0
         
-        if curr_wall < 0.05:  # too close!
+        if curr_wall < 0.05:  # קרוב מדי לקיר
             wall_reward -= 5.0
         
         reward += wall_reward
         breakdown["wall"] = wall_reward
     
-    # 3. bomb avoidance
+    # מרחק מפצצות - אם מתקרב לפצצה מקבל קנס
     if prev_state is not None and len(car.bomb_distances) > 0 and car.bomb_hit_obstacle.any():
         curr_obstacle_rays = (car.bomb_distances / car.ray_length)[car.bomb_hit_obstacle]
         
@@ -56,13 +55,13 @@ def calculate_reward(environment, step_info, prev_state=None):
             else:
                 obstacle_reward = 0
             
-            if curr_min_obstacle < 0.075:  # very close
+            if curr_min_obstacle < 0.075:  # קרוב מאוד
                 obstacle_reward -= 4.0
             
             reward += obstacle_reward
             breakdown["obstacle"] = obstacle_reward
     
-    # 4. speed - reward going fast
+    # שומר על מהירות גבוהה ומקסימלית
     if prev_state is not None:
         prev_velocity = prev_state[30]
         curr_velocity = max(0.0, car.velocity / car.max_velocity)
@@ -76,7 +75,7 @@ def calculate_reward(environment, step_info, prev_state=None):
         reward += velocity_reward
         breakdown["velocity"] = velocity_reward
     
-    # 5. big events
+    # אירועים כגון חציית צ'קפוינט, פגיעה במכשול, התנגשות, סיום וכו'
     if step_info.get("checkpoint_crossed", False):
         cp_reward = 15.0
         reward += cp_reward
@@ -109,5 +108,6 @@ def calculate_reward(environment, step_info, prev_state=None):
         breakdown["finish"] = finish
         breakdown["time_bonus"] = time_bonus
     
+    # החזרת רשימה של התגמולים לגרפים וניתוח בזמן אמת ואת התגמול הכולל לאימון המודל
     breakdown["total"] = reward
     return float(reward), breakdown

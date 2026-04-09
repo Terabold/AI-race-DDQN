@@ -1,4 +1,4 @@
-# the car - physics + raycasting sensors
+# הרכב - פיזיקה + חיישני קרינה
 import math
 import pygame
 import numpy as np
@@ -20,15 +20,15 @@ class Car(pygame.sprite.Sprite):
         self.position = Vector2(x, y)
         self.car_color = car_color
 
-        # Get car image from ResourceManager (already loaded at startup)
+        # טעינת תמונת הרכב מה-ResourceManager
         original_img = resource_manager.images[f'car_{car_color}_original']
-        # Scale to gameplay size (different from menu display size)
+        # סקייל לגודל משחק
         self.image = pygame.transform.scale(original_img, (19, 38))
         self.original_image = self.image
         self.rect = self.image.get_rect(center=self.position)
-        self.mask = pygame.mask.from_surface(self.image)  # pixel-perfect collision
+        self.mask = pygame.mask.from_surface(self.image)  # זיהוי התנגשות ברמת פיקסל
 
-        # physics
+        # פיזיקה
         self.max_velocity = MAXSPEED
         self.velocity = 0
         self.rotation_velocity = ROTATESPEED
@@ -38,25 +38,25 @@ class Car(pygame.sprite.Sprite):
         self.failed = False
         self.can_move = True
 
-        # raycast system - כמו סונאר, יורים קרניים לכל הכיוונים
-        # wall rays = detect walls only
-        # bomb rays = detect walls + bombs
+        # מערכת קרינה - כמו סונאר, יורים קרניים לכל הכיוונים
+        # wall rays = זיהוי קירות בלבד
+        # bomb rays = זיהוי קירות + פצצות
         self.ray_length = 400
         
-        # 15 rays from -90 to +90 degrees
+        # 15 קרניים מ--90 עד +90 מעלות
         self.wall_ray_angles = np.array([-90, -60, -45, -30, -20, -15, -10, 0, 10, 15, 20, 30, 45, 60, 90], dtype=np.float32)
         self.bomb_ray_angles = np.array([-90, -60, -45, -30, -20, -15, -10, 0, 10, 15, 20, 30, 45, 60, 90], dtype=np.float32)
         
-        # distance readings
+        # קריאות מרחקים
         self.wall_distances = np.full(len(self.wall_ray_angles), self.ray_length, dtype=np.float32)
         self.bomb_distances = np.full(len(self.bomb_ray_angles), self.ray_length, dtype=np.float32)
         self.bomb_hit_obstacle = np.zeros(len(self.bomb_ray_angles), dtype=bool)
         
-        # for drawing the rays
+        # לציור הקרניים
         self.wall_collision_points = [None] * len(self.wall_ray_angles)
         self.bomb_collision_points = [None] * len(self.bomb_ray_angles)
         
-        # precalc directions for speed
+        # חישוב מראש של כיוונים למהירות
         self.wall_directions = np.array([
             [math.sin(math.radians(-angle)), -math.cos(math.radians(-angle))]
             for angle in self.wall_ray_angles
@@ -73,7 +73,7 @@ class Car(pygame.sprite.Sprite):
         Results stored in wall_distances and bomb_distances arrays (0-400 pixels).
         """
         car_rotation = -self.angle
-        step = 15  # check every 15px for performance
+        step = 15  # בדיקה כל 15 פיקסלים לביצועים טובים
         width, height = border_mask.get_size()
         
         self.cast_wall_rays(border_mask, car_rotation, step, width, height)
@@ -81,21 +81,21 @@ class Car(pygame.sprite.Sprite):
             self.cast_bomb_rays(border_mask, obstacle_group, car_rotation, step, width, height)
     
     def cast_wall_rays(self, border_mask, car_rotation, step, width, height):
-        # walls only
+        # קירות בלבד
         self.wall_distances.fill(self.ray_length)
         
         angle_rad = math.radians(car_rotation)
         cos_a, sin_a = math.cos(angle_rad), math.sin(angle_rad)
         
         for idx, base_dir in enumerate(self.wall_directions):
-            # rotate by car angle
+            # סיבוב לפי זווית הרכב
             ray_dir_x = base_dir[0] * cos_a - base_dir[1] * sin_a
             ray_dir_y = base_dir[0] * sin_a + base_dir[1] * cos_a
             
             min_dist = self.ray_length
             collision_point = None
             
-            # march along ray
+            # מעבר לאורך הקרן
             for dist in range(step, self.ray_length + 1, step):
                 x = int(self.position.x + ray_dir_x * dist)
                 y = int(self.position.y + ray_dir_y * dist)
@@ -103,7 +103,7 @@ class Car(pygame.sprite.Sprite):
                 if not (0 <= x < width and 0 <= y < height):
                     break
                 
-                if border_mask.get_at((x, y)):  # hit wall
+                if border_mask.get_at((x, y)):  # פגע בקיר
                     min_dist = dist
                     collision_point = Vector2(x, y)
                     break
@@ -112,7 +112,7 @@ class Car(pygame.sprite.Sprite):
             self.wall_collision_points[idx] = collision_point
     
     def cast_bomb_rays(self, border_mask, obstacle_group, car_rotation, step, width, height):
-        # walls + bombs
+        # קירות + פצצות
         self.bomb_distances.fill(self.ray_length)
         self.bomb_hit_obstacle.fill(False)
         
@@ -134,7 +134,7 @@ class Car(pygame.sprite.Sprite):
                 if not (0 <= x < width and 0 <= y < height):
                     break
                 
-                # check bombs first
+                # בדיקת פצצות קודם
                 for obstacle in obstacle_group:
                     if obstacle.rect.collidepoint(x, y):
                         min_dist = dist
@@ -154,7 +154,7 @@ class Car(pygame.sprite.Sprite):
             self.bomb_collision_points[idx] = collision_point
 
     def draw_rays(self, surface):
-        # green = wall rays, yellow = bomb rays
+        # ירוק = קרני קיר, צהוב = קרני פצצה
         for collision_point in self.wall_collision_points:
             if collision_point:
                 pygame.draw.line(surface, GREEN, 
@@ -204,7 +204,7 @@ class Car(pygame.sprite.Sprite):
         self.move()
 
     def reduce_speed(self):
-        # friction when not pressing gas
+        # חיכוך כשלא לוחצים גז
         if not self.can_move:
             return
         if self.velocity > 0:
@@ -224,7 +224,7 @@ class Car(pygame.sprite.Sprite):
         self.rect = self.image.get_rect(center=self.position)
         self.mask = pygame.mask.from_surface(self.image)
         
-        # reset sensors
+        # איפוס חיישנים
         self.wall_distances.fill(self.ray_length)
         self.bomb_distances.fill(self.ray_length)
         self.bomb_hit_obstacle.fill(False)

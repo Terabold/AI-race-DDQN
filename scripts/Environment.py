@@ -1,4 +1,4 @@
-# main gameplay environment - with sounds, countdown, 2-player support
+# סביבת המשחק הראשית - עם סאונד, ספירה לאחור, תמיכה ב-2 שחקנים
 import pygame
 import numpy as np
 from scripts.Constants import (FINISHLINE_POS, CAR_START_POS, CAR1_FAIR_START, CAR2_FAIR_START, 
@@ -55,11 +55,11 @@ class Environment:
         self.all_sprites = pygame.sprite.Group()
 
         if self.car1_active and self.car2_active:
-            # 2 player - fair positions
+            # 2 שחקנים - מיקומי פתיחה הוגנים
             self.car1 = Car(*CAR1_FAIR_START, car_color1)
             self.car2 = Car(*CAR2_FAIR_START, car_color2)
         else:
-            # single player
+            # שחקן יחיד
             if self.car1_active:
                 self.car1 = Car(start_x, start_y, car_color1)
             if self.car2_active:
@@ -71,7 +71,7 @@ class Environment:
             self.all_sprites.add(self.car2)
 
     def setup_track(self):
-        # Get all track assets from ResourceManager (loaded once at startup)
+        # טעינת נכסי מסלול מה-ResourceManager
         self.track = resource_manager.images['track']
         self.track_border = resource_manager.images['track_border']
         self.track_border_mask = resource_manager.track_border_mask
@@ -187,7 +187,7 @@ class Environment:
         car1_info = {'collision': False, 'finished': False, 'hit_obstacle': False}
         car2_info = {'collision': False, 'finished': False, 'hit_obstacle': False}
 
-        # car 1
+        # רכב 1
         if self.car1_active and not self.car1_finished and not self.car1.failed and self.car1_time > 0:
             pre_failed = self.car1.failed
             pre_finished = self.car1_finished
@@ -205,7 +205,7 @@ class Environment:
                 'hit_obstacle': hit_obstacle
             }
 
-        # car 2
+        # רכב 2
         if self.car2_active and not self.car2_finished and not self.car2.failed and self.car2_time > 0:
             pre_failed = self.car2.failed
             pre_finished = self.car2_finished
@@ -316,7 +316,7 @@ class Environment:
         if action is None:
             return
 
-        # Actions that involve movement (not just turning)
+        # פעולות הכוללות תנועה (לא רק סיבוב)
         moving = action in [1, 2, 5, 6, 7, 8]
 
         if action in [3, 5, 7]:
@@ -333,7 +333,7 @@ class Environment:
             car.reduce_speed()
 
     def setup_sound(self):
-        # Get all sounds from ResourceManager (loaded once at startup)
+        # טעינת סאונדים מה-ResourceManager
         self.collide_sound = resource_manager.sounds['collision']
         self.win_sound = resource_manager.sounds['win']
         self.obstacle_sound = resource_manager.sounds['obstacle']
@@ -349,19 +349,19 @@ class Environment:
             return
 
         if play:
-            # Resume or start music
+            # חידוש או התחלת מוזיקה
             if pygame.mixer.music.get_busy():
                 pygame.mixer.music.unpause()
             else:
                 pygame.mixer.music.play(-1)
             self.is_music_playing = True
         else:
-            # Pause music
+            # השהיית מוזיקה
             pygame.mixer.music.pause()
             self.is_music_playing = False
 
     def get_state(self, car_num=1):
-        # get state for ai player
+        # חישוב מצב לשחקן AI
         if car_num == 1:
             if not self.car1_active:
                 return None

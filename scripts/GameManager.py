@@ -1,4 +1,4 @@
-# Tracks global game state and player settings
+# מנהל מצב המשחק הגלובלי והגדרות שחקנים
 
 class GameStateManager:
     """
@@ -10,6 +10,7 @@ class GameStateManager:
     def __init__(self):
         self.state = 'menu'
         
+        # הגדרות שחקנים
         self.player1_selection = None
         self.player2_selection = None
         self.player1_car_color = "Blue"
@@ -21,4 +22,5 @@ class GameStateManager:
     def getState(self):
         return self.state
 
+# מופע גלובלי יחיד - משותף לכל חלקי המשחק
 game_state_manager = GameStateManager()

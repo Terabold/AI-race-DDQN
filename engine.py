@@ -1,4 +1,4 @@
-# main loop - switches between screens
+# לולאה ראשית - מחליפה בין מסכים
 import pygame
 from scripts.Constants import FPS, MENUBG, WIDTH, HEIGHT
 from scripts.menu import MainMenu, RaceSettingsMenu
@@ -7,30 +7,30 @@ from scripts.ResourceLoader import resource_manager
 
 class Engine:
     def __init__(self):
-        # Initialize pygame ONLY
+        # התחלת pygame במנוע הפרויקט
         pygame.init()
         pygame.joystick.quit()
         
-        # Create window IMMEDIATELY - before any heavy operations
+        # ליצור חלון משחק
         pygame.display.set_caption('DDQN RACE')
         self.display = pygame.display.set_mode((WIDTH, HEIGHT))
         self.clock = pygame.time.Clock()
         
-        # Show black screen instantly
+        # מסך שחור
         self.display.fill((0, 0, 0))
         pygame.display.flip()
         
-        # Initialize device
+        # להתחיל טעינת משאבים
         resource_manager.initialize()
         
-        # Show loading text IMMEDIATELY, load in background
+        # להראות מסך טעינה זמני
         font = pygame.font.Font(None, 48)
         loading_messages = ["Loading.", "Loading..", "Loading..."]
         
-        # First frame - load everything
+        # טעינת הכל
         resource_manager.load_all()
         
-        # Show animation while resources loaded
+        # אנימציית מסך התחלה loading
         for msg in loading_messages * 2:
             self.display.fill((0, 0, 0))
             text = font.render(msg, True, (255, 255, 255))
@@ -38,7 +38,7 @@ class Engine:
             pygame.display.flip()
             pygame.time.wait(200)
         
-        # Get loaded background
+        # רקע תפריט
         self.menu_bg = resource_manager.images['menu_bg']
         
         self.game = None
@@ -53,7 +53,7 @@ class Engine:
         while True:
             current_state = game_state_manager.getState()
             
-            # init when switching states
+            # החלפת מצבים
             if previous_state != current_state:
                 if current_state == 'game':
                     if self.game is None:
@@ -66,13 +66,13 @@ class Engine:
                         self.trainer = Trainer(self.display, self.clock)
                     self.trainer.initialize()
 
-            # unlimited fps for training, 60 for menus
+            # הגדרת הגבלת פריימים למשחק ולאימון
             if current_state == 'training':
                 dt = self.clock.tick() / 1000.0
             else:
                 dt = self.clock.tick(FPS) / 1000.0
 
-            # run active screen
+            # להריץ את המסך של ה-state הנבחר
             if current_state == 'menu':
                 self.display.blit(self.menu_bg, (0, 0))
                 self.main_menu.run()

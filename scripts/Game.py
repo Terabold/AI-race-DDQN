@@ -1,4 +1,4 @@
-# handles actual racing - human vs ai etc
+# מנהל את המירוץ בפועל - אנושי מול AI וכו'
 import pygame
 import sys
 import os
@@ -19,6 +19,7 @@ class Game:
         self.player2 = None
 
     def initialize_environment(self):
+        # קריאת הגדרות מהתפריט והכנת הסביבה
         settings = {
             'player1': game_state_manager.player1_selection,
             'player2': game_state_manager.player2_selection,
@@ -41,13 +42,13 @@ class Game:
         elif player_type == "DQN":
             agent = DQNAgent(device=resource_manager.device)
             
-            # Use preloaded checkpoint from ResourceManager
+            # שימוש בנקודת ביקורת טעונה מראש מה-ResourceManager
             checkpoint = resource_manager.model_checkpoint
             if checkpoint:
                 agent.policy_net.load_state_dict(checkpoint['model_state_dict'])
                 agent.target_net.load_state_dict(checkpoint['target_state_dict'])
             elif os.path.exists(agent.model_path):
-                # Fallback: load full model if inference not available
+                # גיבוי: טעינת מודל מלא אם inference לא זמין
                 agent.load_model(agent.model_path)
             
             agent.epsilon = INFERENCE_EPSILON
@@ -93,6 +94,7 @@ class Game:
         if player is None:
             return None
         if isinstance(player, DQNAgent):
+            # חישוב קרניים רק לשחקן AI - יקר חישובית
             state = self.environment.get_state(car_num=car_num)
             return player.get_action(state, training=False) if state is not None else 0
         return player.get_action()

@@ -1,4 +1,4 @@
-# utility functions - ui stuff, buttons, overlays
+# פונקציות עזר - UI, כפתורים, שכבות-על
 import pygame
 import math
 from scripts.Constants import FONT, COUNTDOWN_FONT, WIDTH, HEIGHT, BLACK, WHITE, RED, GREEN, DODGERBLUE
@@ -6,11 +6,12 @@ from scripts.ResourceLoader import resource_manager
 
 
 def font_scale(size, Font=FONT):
-    """Get font from ResourceManager's cache"""
+    # קבלת גופן מהמטמון
     return resource_manager.get_font(Font, size)
 
 
 def create_shadowed_text(text, font, color, shadow_color=BLACK, offset=4):
+    # יצירת טקסט עם צל
     shadow = font.render(text, True, shadow_color)
     main_text = font.render(text, True, color)
     combined = pygame.Surface((shadow.get_width() + offset, shadow.get_height() + offset), pygame.SRCALPHA)
@@ -20,11 +21,13 @@ def create_shadowed_text(text, font, color, shadow_color=BLACK, offset=4):
 
 
 def smooth_sine_wave(time, period=4.0, min_val=0.0, max_val=1.0):
+    # גל סינוסי חלק לאנימציות
     normalized = (math.cos(time * (2 * math.pi / period)) + 1) / 2
     return min_val + normalized * (max_val - min_val)
 
 
 def calculate_ui_constants(display_size):
+    # חישוב קבועי UI מותאמי רזולוציה
     ref_width, ref_height = 1920, 1080
     width_scale = display_size[0] / ref_width
     height_scale = display_size[1] / ref_height
@@ -38,7 +41,7 @@ def calculate_ui_constants(display_size):
     }
 
 
-# game end overlays
+# שכבות-על לסיום משחק
 
 def draw_game_overlay(environment, title, title_color, overlay_tint=None):
     current_time = pygame.time.get_ticks() / 1000
@@ -61,8 +64,7 @@ def draw_game_overlay(environment, title, title_color, overlay_tint=None):
         (environment.car2_active, environment.car2_finished, car2)
     ], 1):
         if active and car is not None:
-            # Prefer explicit per-car state detection so each player's result
-            # is shown correctly even if the overall game title is "Race Finished!".
+            # זיהוי מצב כל שחקן בנפרד
             if getattr(car, 'failed', False):
                 status = "Crashed!"
             elif finished:
@@ -91,6 +93,7 @@ def draw_failed(environment):
 
 
 def draw_ui(environment):
+    # ציור טיימר ומצב רכב במהלך משחק
     y = 10
     car1 = getattr(environment, 'car1', None)
     car2 = getattr(environment, 'car2', None)
@@ -113,6 +116,7 @@ def draw_ui(environment):
 
 
 def draw_countdown(environment, count):
+    # ציור ספירת הזינוק האחורה
     shadow = font_scale(180, COUNTDOWN_FONT).render(str(count), True, BLACK)
     shadow_surface = pygame.Surface(shadow.get_size(), pygame.SRCALPHA)
     shadow_surface.blit(shadow, (0, 0))

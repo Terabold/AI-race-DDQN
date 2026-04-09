@@ -1,17 +1,17 @@
-# checkpoints - מונע מהאיי לרמות ע"י נסיעה אחורה
+# צ'קפוינטים - מונע מה-AI לרמות ע"י נסיעה אחורה וקדימה באותה נקודה
 import pygame
 from scripts.Constants import TRACK_CHECKPOINT_ZONES, FONT
 
 
 def lines_intersect(p1, p2, p3, p4):
-    # check if two line segments cross
+    # בדיקה האם שני קטעים חוצים זה את זה
     x1, y1 = p1
     x2, y2 = p2
     x3, y3 = p3
     x4, y4 = p4
     
     denom = (x2 - x1) * (y4 - y3) - (y2 - y1) * (x4 - x3)
-    if abs(denom) < 1e-10:  # parallel
+    if abs(denom) < 1e-10:  # מקביל
         return False
     
     t = ((x3 - x1) * (y4 - y3) - (y3 - y1) * (x4 - x3)) / denom
@@ -34,12 +34,12 @@ class CheckpointManager:
         self.prev_pos = None
 
     def check_crossing(self, car_pos):
-        # returns (crossed_forward, crossed_backward)
+        # מחזיר (חצה קדימה, חצה אחורה)
         if self.prev_pos is None:
             self.prev_pos = car_pos
             return False, False
 
-        # check if crossed current checkpoint
+        # בדיקה האם חצה את הצ'קפוינט הנוכחי
         if self.current_idx < self.total_checkpoints:
             p1, p2 = self.zones[self.current_idx]
             if lines_intersect(self.prev_pos, car_pos, p1, p2):
@@ -49,7 +49,7 @@ class CheckpointManager:
                 self.prev_pos = car_pos
                 return True, False
 
-        # check backwards through passed checkpoints
+        # בדיקה לאחור דרך צ'קפוינטים שכבר עברו
         for i in range(self.current_idx):
             p1, p2 = self.zones[i]
             if lines_intersect(self.prev_pos, car_pos, p1, p2):
@@ -61,7 +61,7 @@ class CheckpointManager:
         return False, False
 
     def draw(self, surface):
-        # green = current target, gray = passed, red = crossed multiple times
+        # ירוק = יעד נוכחי, אפור = עבר, אדום = עבר מספר פעמים
         for i, (p1, p2) in enumerate(self.zones):
             if i == self.current_idx:
                 color, width = (0, 255, 0), 4

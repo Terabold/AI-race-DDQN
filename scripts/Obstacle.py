@@ -1,4 +1,4 @@
-# bombs - randomly placed obstacles that slow you down
+# פצצות - מכשולים אקראיים שמאטים את הרכב
 import pygame
 from scripts.Constants import BOMB, OBSTACLE_SIZE, OBSTACLE_HITBOX, BOMB_LIST
 from scripts.ResourceLoader import resource_manager
@@ -19,11 +19,11 @@ class Obstacle(pygame.sprite.Sprite):
             self.image = resource_manager.images['bomb']
             self.image = pygame.transform.scale(self.image, OBSTACLE_SIZE)
         else:
-            # training mode - just red box
+            # רק קופסא אדומה לאימון בלי תמונה
             self.image = pygame.Surface(OBSTACLE_SIZE, pygame.SRCALPHA)
             pygame.draw.rect(self.image, (255, 0, 0), OBSTACLE_HITBOX)
         
-        # hitbox same for both
+        # תחומי גודל להתנגשות
         self.mask_surface = pygame.Surface(OBSTACLE_SIZE, pygame.SRCALPHA) 
         pygame.draw.rect(self.mask_surface, (255, 255, 255), OBSTACLE_HITBOX)
         self.mask = pygame.mask.from_surface(self.mask_surface)  

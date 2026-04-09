@@ -1,5 +1,5 @@
-# training environment - simplified version without sounds/countdown
-# runs thousands of episodes fast
+# סביבת אימון מצומצמת - ללא סאונד וספירה לאחור
+# מריצה אלפי אפיזודות במהירות לאימון הסוכן
 import pygame
 import numpy as np
 from scripts.Constants import (CAR_START_POS, NUM_OBSTACLES, FINISHLINE_POS, 
@@ -39,12 +39,12 @@ class AIEnvironment:
         self.car_crashed = False
         self.car_timeout = False
         
-        # for reward calc
+        # לחישוב תגמול - שומר מרחקים לצ'קפוינט הנוכחי
         self.current_checkpoint_distance = 0.0
         self.prev_checkpoint_distance = 0.0
         
     def setup_track(self):
-        # Get all track assets from ResourceManager (loaded once at startup)
+        # טוען נכסי מסלול מה-ResourceManager
         self.track_border = resource_manager.images['track_border']
         self.track_border_mask = resource_manager.track_border_mask
         
@@ -59,6 +59,7 @@ class AIEnvironment:
         )
 
     def reset(self):
+        # אתחול מצב הסביבה לתחילת אפיזודה חדשה
         self.car.reset(*CAR_START_POS)
         obstacle_generator = Obstacle(0, 0, show_image=False)
         obstacle_generator.reshuffle_obstacles(self.obstacle_group, self.num_obstacles)
@@ -72,10 +73,10 @@ class AIEnvironment:
         self.prev_checkpoint_distance = 0.0
 
     def get_state(self):
-        # 33 numbers: 15 wall rays + 15 bomb rays + vel + sin + cos
+        # 33 מספרים: 15 קרני קיר + 15 קרני פצצה + מהירות + sin + cos
         self.car.cast_rays(self.track_border_mask, self.obstacle_group)
         
-        # distance to next checkpoint
+        # מרחק לצ'קפוינט הבא
         if self.checkpoint_manager.current_idx < self.checkpoint_manager.total_checkpoints:
             cp_center = CHECKPOINT_CENTERS[self.checkpoint_manager.current_idx]
             car_pos = np.array([self.car.position.x, self.car.position.y], dtype=np.float32)
@@ -84,7 +85,7 @@ class AIEnvironment:
         else:
             self.current_checkpoint_distance = 0.0
         
-        # normalize 0-1
+        # נרמול ל-0-1
         norm_wall_rays = self.car.wall_distances / self.car.ray_length
         norm_bomb_rays = self.car.bomb_distances / self.car.ray_length
         norm_vel = max(0.0, self.car.velocity / self.car.max_velocity)
@@ -101,20 +102,20 @@ class AIEnvironment:
         return state
 
     def step(self, action):
-        # one frame - returns (state, info, done)
+        # צעד אחד - מחזיר (מצב, מידע, האם נגמר)
         if self.episode_ended:
             return self.get_state(), {
                 'collision': False, 'finished': False, 'hit_obstacle': False,
                 'timeout': False, 'checkpoint_crossed': False, 'backward_crossed': False
             }, True
 
-        # save distance BEFORE moving
+        # שמירת מרחק לפני תנועה לחישוב דלתא בתגמול
         self.prev_checkpoint_distance = self.current_checkpoint_distance
 
         pre_velocity = self.car.velocity
         self.handle_car_movement(action)
 
-        # check checkpoints
+        # בדיקת צ'קפוינטים
         car_pos = (self.car.position.x, self.car.position.y)
         crossed, backward = self.checkpoint_manager.check_crossing(car_pos)
 
@@ -127,7 +128,7 @@ class AIEnvironment:
         step_info['finished'] = self.check_finish()
         step_info['collision'] = self.check_collision()
 
-        # timer
+        # עדכון טיימר
         self.time_remaining = max(0, self.time_remaining - 1/FPS)
         if self.time_remaining <= 0 and not self.car_finished and not self.car_crashed:
             self.car.can_move = False
@@ -206,7 +207,7 @@ class AIEnvironment:
         self.surface.blit(main, pos)
 
     def draw(self):
-        # render for training videos
+        # ציור לצפייה באימון
         self.surface.fill((0, 0, 0))
         self.obstacle_group.draw(self.surface)
         self.checkpoint_manager.draw(self.surface)
@@ -214,7 +215,7 @@ class AIEnvironment:
         if not self.car_finished and not self.car_crashed:
             self.car.draw_rays(self.surface)
             
-            # line to next checkpoint
+            # קו לצ'קפוינט הבא
             if self.checkpoint_manager.current_idx < self.checkpoint_manager.total_checkpoints:
                 cp_center = CHECKPOINT_CENTERS[self.checkpoint_manager.current_idx]
                 car_pos = (int(self.car.position.x), int(self.car.position.y))
@@ -231,7 +232,7 @@ class AIEnvironment:
         self.surface.blit(self.car.image, self.car.rect)
         self.surface.blit(self.finish_line, self.finish_line_position)
 
-        # ui
+        # ממשק משתמש
         x, y = MARGIN_X, MARGIN_Y_TOP
         
         time_color = GREEN if self.time_remaining > 10 else (YELLOW if self.time_remaining > 3 else RED)

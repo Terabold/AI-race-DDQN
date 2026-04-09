@@ -1,6 +1,6 @@
-# keyboard input handler
-# wasd for p1, arrows for p2
-# actions: 0=nothing, 1=fwd, 2=back, 3=left, 4=right, 5-8=combos
+# קריאת קלט מקלדת
+# WASD לשחקן 1, חצים לשחקן 2
+# פעולות: 0=כלום, 1=קדימה, 2=אחורה, 3=שמאל, 4=ימין, 5-8=שילובים
 import pygame
 
 
@@ -21,7 +21,7 @@ class HumanAgent:
         left = keys[self.controls['left']]
         right = keys[self.controls['right']]
         
-        # combos first
+        # שילובים קודם
         if forward and left:
             return 5
         if forward and right:
@@ -30,7 +30,7 @@ class HumanAgent:
             return 7
         if backward and right:
             return 8
-        # singles
+        # יחידים
         if forward:
             return 1
         if backward:

@@ -1,4 +1,4 @@
-# all the menus
+# כל מסכי התפריט
 import pygame
 import sys
 from scripts.Constants import FONT, WHITE, BLACK, COLORS, CAR_COLORS, CAR_COLORS_LIST, WIDTH, HEIGHT
@@ -8,10 +8,10 @@ from scripts.ResourceLoader import resource_manager
 # from pathlib import Path
 
 
-# Base class for all menu screens
+# מחלקת בסיס לכל מסכי התפריט
 
 class BaseMenuScreen:
-    """Base menu screen with common button handling and drawing."""
+    # Base menu screen with common button handling and drawing.
     
     def __init__(self, screen, title="Menu"):
         self.screen = screen
@@ -75,6 +75,7 @@ class BaseMenuScreen:
             self.screen.blit(text_surf, text_surf.get_rect(center=btn.rect.center))
         
         if btn.disabled:
+            # X על כפתורים מושבתים
             cross_padding = 8
             cross_start_x, cross_start_y = btn.rect.left + cross_padding, btn.rect.top + cross_padding
             cross_end_x, cross_end_y = btn.rect.right - cross_padding, btn.rect.bottom - cross_padding
@@ -113,16 +114,16 @@ class BaseMenuScreen:
         self.draw()
 
 
-# Main menu - play, train, quit
+# תפריט ראשי - שחק, אמן, יציאה
 
 class MainMenu(BaseMenuScreen):
-    """Main menu screen with Play, Train AI, and Quit buttons."""
+    # Main menu screen with Play, Train AI, and Quit buttons.
     
     def __init__(self, screen):
         super().__init__(screen, "RACING GAME")
     
     def initialize(self):
-        # Calculate layout positions
+        # חישוב מיקומי פריסה
         center_x = self.screen.get_width() // 2
         start_y_position = int(self.screen.get_height() * 0.3)
         button_width = int(self.screen.get_width() * 0.25)
@@ -142,10 +143,10 @@ class MainMenu(BaseMenuScreen):
         sys.exit()
 
 
-# Race settings - player selection and car colors
+# הגדרות מרוץ - בחירת שחקנים וצבעי רכב
 
 class RaceSettingsMenu(BaseMenuScreen):
-    """Race settings: select player types (Human/DQN) and car colors."""
+    # Race settings: select player types (Human/DQN) and car colors.
     
     def __init__(self, screen):
         self.car_images = {}
@@ -173,15 +174,15 @@ class RaceSettingsMenu(BaseMenuScreen):
         screen_width, screen_height = self.screen.get_size()
         center_x = screen_width // 2
         
-        # Layout constants
+        # קבועי פריסה
         column_offset_from_center = int(screen_width * 0.12)
         car_selection_offset_from_center = int(screen_width * 0.16)
         
-        # Calculate column centers for Player 1 and Player 2
+        # מרכזי עמודות לשחקן 1 ו-2
         p1_column_center_x = center_x - column_offset_from_center
         p2_column_center_x = center_x + column_offset_from_center
         
-        # Calculate car selection button positions (further out from columns)
+        # מיקומי כפתורי רכב
         p1_car_selection_center_x = center_x - car_selection_offset_from_center - column_offset_from_center
         p2_car_selection_center_x = center_x + car_selection_offset_from_center + column_offset_from_center
         
@@ -191,7 +192,7 @@ class RaceSettingsMenu(BaseMenuScreen):
         top_margin = int(screen_height * 0.20)
         spacing = self.UI['BUTTON_HEIGHT'] + int(self.UI['BUTTON_SPACING'] * 0.8)
         
-        # player type buttons
+        # כפתורי סוג שחקן
         for i, ptype in enumerate(["Human", "DQN"]):
             y = top_margin + (i + 1) * spacing
             b1 = self.create_button(ptype, lambda pt=ptype: self.toggle_p1(pt), 
@@ -201,7 +202,7 @@ class RaceSettingsMenu(BaseMenuScreen):
             self.p1_type_btns.append(b1)
             self.p2_type_btns.append(b2)
         
-        # car buttons
+        # כפתורי רכב
         for i, color in enumerate(CAR_COLORS_LIST):
             y = top_margin + (i + 1) * spacing
             img = self.load_car_image(color)
@@ -243,6 +244,7 @@ class RaceSettingsMenu(BaseMenuScreen):
     
     def update(self):
         super().update()
+        # השבתת צבע רכב שכבר נבחר על ידי היריב
         for btn in self.p1_car_btns:
             btn.disabled = btn.color_name == game_state_manager.player2_car_color
         for btn in self.p2_car_btns:
@@ -307,7 +309,7 @@ class RaceSettingsMenu(BaseMenuScreen):
         box = pygame.Rect(x - 100, y - 125, 200, 250)
         
         for i in range(3):
-            # Create a fading background effect for the panel
+            # אפקט רקע מוחלש לפאנל
             panel_background_surface = pygame.Surface((200 - i*2, 250 - i*2))
             panel_background_surface.set_alpha(100 - i*20)
             panel_background_surface.fill(color)
@@ -336,12 +338,10 @@ class RaceSettingsMenu(BaseMenuScreen):
             self.screen.blit(key_text, key_text.get_rect(center=(x + 45, key_row_y_position)))
 
 
-
-
-# Pause menu - overlay during gameplay
+# תפריט השהייה - שכבה במהלך משחק
 
 class PauseMenu:
-    """Pause overlay with Resume and Back buttons."""
+    # Pause overlay with Resume and Back buttons.
     
     def __init__(self, surface):
         self.surface = surface

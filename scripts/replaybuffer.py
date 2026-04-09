@@ -1,5 +1,5 @@
-# experience replay - stores past experiences for learning
-# random sampling breaks correlation between sequential frames
+# חוצץ חוויות - שומר חוויות עבר ללמידה
+# דגימה אקראית שוברת קורלציה בין פריימים עוקבים
 import numpy as np
 import random
 from collections import deque
@@ -7,7 +7,7 @@ from collections import deque
 
 class ReplayBuffer:
     def __init__(self, capacity=100000):
-        # deque auto-removes old items when full
+        # deque מוחק אוטומטית חוויות ישנות כשמתמלא
         self.buffer = deque(maxlen=capacity)
         self.capacity = capacity
 
@@ -15,7 +15,7 @@ class ReplayBuffer:
         self.buffer.append((state, action, reward, next_state, done))
 
     def sample(self, batch_size):
-        # random batch for learning
+        # אצווה אקראית ללמידה
         if len(self.buffer) < batch_size:
             indices = range(len(self.buffer))
         else:
@@ -23,7 +23,7 @@ class ReplayBuffer:
         
         batch = [self.buffer[i] for i in indices]
         
-        # split into arrays
+        # פיצול למערכים
         states = np.vstack([exp[0] for exp in batch])
         actions = np.array([exp[1] for exp in batch], dtype=np.int64)
         rewards = np.array([exp[2] for exp in batch], dtype=np.float32)
@@ -36,7 +36,7 @@ class ReplayBuffer:
         return len(self.buffer)
 
     def to_dict(self):
-        # for saving to file
+        # לשמירה לקובץ
         serialized = {'capacity': self.capacity, 'buffer': []}
         for state, action, reward, next_state, done in self.buffer:
             state_ser = state.tolist() if isinstance(state, np.ndarray) else state
@@ -46,7 +46,7 @@ class ReplayBuffer:
 
 
 def replaybuffer_from_dict(data):
-    # recreate from saved dict
+    # שחזור מ-dict שנשמר
     capacity = data.get('capacity', 10000)
     buffer_data = data.get('buffer', [])
     

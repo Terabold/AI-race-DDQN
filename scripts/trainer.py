@@ -1,4 +1,4 @@
-# the training loop - runs episodes and logs to wandb
+# לולאת האימון - מריצה אפיזודות ומתעד ל-wandb
 import os
 import pygame
 import sys
@@ -47,7 +47,7 @@ class Trainer:
         self.fps_timer = None
         self.current_fps = 0
         
-        # rolling stats (last 100 episodes)
+        # סטטים של 100 ריצות אחרונות
         self.last_100_rewards = deque(maxlen=100)
         self.last_100_checkpoints = deque(maxlen=100)
         self.last_100_losses = deque(maxlen=100)
@@ -220,11 +220,11 @@ class Trainer:
             except:
                 pass
         
-        # auto-save
+        # שמירה כל 50 ריצות
         if self.agent.episode_count % 50 == 0:
             self.agent.save_model()
         
-        # milestone print
+        # הדפסה כל 100 ריצות נתונים
         if self.agent.episode_count % 100 == 0:
             elapsed = time.time() - self.start_time
             print("\n" + "="*80)
@@ -254,12 +254,12 @@ class Trainer:
                 elif event.key == pygame.K_v:
                     self.show_visualization = not self.show_visualization
         
-        # training step
+        # צעד אימון - בודק אם האפיזודה לא הסתיימה, בוחר פעולה, מבצע אותה, מקבל תגמול ומעדכן את המודל
         if not self.environment.episode_ended:
             action = self.agent.get_action(self.state, training=True)
             next_state, step_info, done = self.environment.step(action)
             
-            # track events
+            # עקיבה אחרי אירועים
             if step_info.get('checkpoint_crossed'):
                 self.episode_events['checkpoint_crosses'] += 1
             if step_info.get('backward_crossed'):
@@ -283,7 +283,7 @@ class Trainer:
             self.state = next_state
             self.fps_counter += 1
             
-            # fps calc
+            # חישוב fps לדעת ביצועים של הקוד
             current_time = time.time()
             if current_time - self.fps_timer >= 1.0:
                 self.current_fps = self.fps_counter / (current_time - self.fps_timer)
@@ -292,7 +292,9 @@ class Trainer:
         else:
             self.end_episode()
         
-        # render
+        # toggle לרנדר את המשחק או לא
+        # לרנדר = לראות כיצד המודל לומד ולשפר אך יותר איטי
+        # לא לרנדר = לא להציג את המשחק לתקופה ארוכה כדי שילמד מהר יותר אך ללא לראות התקדמות
         if self.show_visualization:
             self.environment.draw()
         else:

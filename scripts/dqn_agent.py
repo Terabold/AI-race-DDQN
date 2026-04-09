@@ -1,4 +1,4 @@
-# the agent - manages learning and decision making
+# הסוכן - מנהל למידה וקבלת החלטות
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -8,8 +8,8 @@ import os
 from scripts.dqn import DQN
 from scripts.replaybuffer import ReplayBuffer, replaybuffer_from_dict
 
-STATE_DIM = 33   # 15 wall + 15 bomb + vel + sin + cos
-ACTION_DIM = 9   # nothing/forward/back/left/right/combos
+STATE_DIM = 33   # 15 קרני קיר + 15 קרני פצצה + מהירות + sin + cos
+ACTION_DIM = 9   # כלום/קדימה/אחורה/שמאל/ימין/שילובים
 
 
 class DQNAgent:
@@ -24,22 +24,22 @@ class DQNAgent:
         self.device = device if device else torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         print(f"Using device: {self.device}")
 
-        # two networks: policy (learning) and target (stable copy)
+        # שתי רשתות: policy (לומדת) ו-target (עותק יציב)
         self.policy_net = DQN(STATE_DIM, ACTION_DIM, device=self.device).to(self.device)
         self.target_net = DQN(STATE_DIM, ACTION_DIM, device=self.device).to(self.device)
         self.target_net.load_state_dict(self.policy_net.state_dict())
         self.target_net.eval()
 
-        self.gamma = 0.95  # future reward discount
+        self.gamma = 0.95  # מקדם היוון תגמול עתידי
         self.batch_size = 256
         self.lr = 0.0001
         
-        # exploration: start random, slowly learn to exploit
+        # חקירה: מתחיל אקראי, לאט לאט לומד לנצל
         self.epsilon = 1.0
         self.epsilon_min = 0.05     
         self.epsilon_decay = 0.9995
         
-        self.target_update = 200  # sync networks every N steps
+        self.target_update = 200  # סנכרון רשתות כל N צעדים
         self.episode_count = 0
 
         self.replay_buffer = ReplayBuffer(capacity=250000)  
@@ -62,7 +62,7 @@ class DQNAgent:
         if state is None:
             return 0
         
-        # epsilon-greedy: random action with probability epsilon
+        # epsilon-greedy: פעולה אקראית בהסתברות epsilon
         if training and random.random() < self.epsilon:
             return random.randint(0, ACTION_DIM - 1)
         else:
@@ -72,13 +72,13 @@ class DQNAgent:
                 return torch.argmax(q_values).item()
 
     def update(self):
-        # learn from random batch of past experiences
+        # לימוד מאצווה אקראית של חוויות עבר
         if len(self.replay_buffer) < self.batch_size * 2:
             return None
 
         states, actions, rewards, next_states, dones = self.replay_buffer.sample(self.batch_size)
 
-        # to tensors
+        # המרה לטנזורים
         states = torch.FloatTensor(states).to(self.device)
         actions = torch.LongTensor(actions).to(self.device)
         rewards = torch.FloatTensor(rewards).to(self.device)
@@ -87,28 +87,28 @@ class DQNAgent:
 
         rewards = torch.clamp(rewards, -20.0, 20.0)
 
-        # current q values
+        # ערכי Q נוכחיים
         q_values = self.policy_net(states).gather(1, actions.unsqueeze(1)).squeeze(1)
 
-        # double dqn: policy picks action, target evaluates
+        # double dqn: policy בוחרת פעולה, target מעריכה
         with torch.no_grad():
             best_actions = self.policy_net(next_states).max(1)[1].unsqueeze(1)
             next_q_values = self.target_net(next_states).gather(1, best_actions).squeeze(1)
             target_q_values = rewards + (1 - dones) * self.gamma * next_q_values
 
-        # backprop
+        # backpropagation
         loss = F.smooth_l1_loss(q_values, target_q_values)
         self.optimizer.zero_grad()
         loss.backward()
         torch.nn.utils.clip_grad_norm_(self.policy_net.parameters(), 1.0)
         self.optimizer.step()
 
-        # sync target network periodically
+        # סנכרון רשת המטרה מדי פעם
         self.train_step += 1
         if self.train_step % self.target_update == 0:
             self.target_net.load_state_dict(self.policy_net.state_dict())
 
-        # decay exploration
+        # דעיכת חקירה
         self.epsilon = max(self.epsilon_min, self.epsilon * self.epsilon_decay)
 
         return loss.item()
@@ -120,7 +120,7 @@ class DQNAgent:
         if len(self.recent_rewards) > 100:
             self.recent_rewards.pop(0)
         
-        # track best finish
+        # מעקב אחרי שיא זמן סיום
         if finished:
             if time_remaining > self.best_finish_time:
                 old_best = self.best_finish_time
@@ -130,7 +130,7 @@ class DQNAgent:
                 print(f"NEW BEST! Time: {25.0 - time_remaining:.2f}s (was {25.0 - old_best:.2f}s)")
                 print(f"{'='*60}\n")
         
-        # adjust lr if stuck
+        # התאמת קצב למידה אם תקוע
         if len(self.recent_rewards) >= 100:
             self.scheduler.step(np.mean(self.recent_rewards))
         
@@ -154,7 +154,7 @@ class DQNAgent:
             'replay_buffer': self.replay_buffer.to_dict(),
         }
         
-        # safe save with temp file
+        # שמירה בטוחה עם קובץ זמני
         tmp = save_path + '.tmp'
         torch.save(checkpoint, tmp)
         

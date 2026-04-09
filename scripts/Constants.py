@@ -1,10 +1,10 @@
-# constants - all the magic numbers in one place
+# קבועים - כל המספרים הקסומים במקום אחד
 import numpy as np
 
 FPS = 60
 WIDTH, HEIGHT = 1600, 900
 
-# colors
+# צבעים
 GOLD = (255, 215, 0)
 GREEN = (0, 255, 0)
 WHITE = (255, 255, 255)
@@ -14,7 +14,7 @@ BLACK = (0, 0, 0)
 YELLOW = (255, 255, 0)
 ORANGE = (255, 165, 0)
 
-# car stuff
+# רכבים
 CAR_COLORS = {
     "Red": r"Assets\photo\car-red.png",
     "Blue": r"Assets\photo/car-blue.png",
@@ -36,9 +36,9 @@ COLORS = {
 
 CAR_COLORS_LIST = list(CAR_COLORS.keys())
 
-# game settings
+# הגדרות משחק
 CAR_START_POS = (350, 225)
-CAR1_FAIR_START = (330, 219)  # 2 player mode positions
+CAR1_FAIR_START = (330, 219)  # מיקומי מצב 2 שחקנים
 CAR2_FAIR_START = (363, 180)
 
 FINISHLINE_POS = np.array([268, 250])
@@ -47,17 +47,17 @@ FINISHLINE_SIZE = (162, 25)
 OBSTACLE_SIZE = (20, 20)
 OBSTACLE_HITBOX = (5, 5, 10, 10)
 NUM_OBSTACLES = 15
-OBSTACLE_VELOCITY_REDUCTION = 0.05  # hit bomb = almost stop
+OBSTACLE_VELOCITY_REDUCTION = 0.05  # פגיעה בפצצה = עצירה כמעט מלאה
 
-TARGET_TIME = 25.0  # seconds to finish
-INFERENCE_EPSILON = 0.02  # small randomness when ai plays
+TARGET_TIME = 25.0  # שניות לסיום
+INFERENCE_EPSILON = 0.02  # רנדומליות קטנה כשה-AI משחק
 
-# physics - played around with these until it felt good
+# פיזיקה - שיחקנו עם המספרים עד שהרגיש טוב
 MAXSPEED = 6.0
 ROTATESPEED = 5.0
 ACCELERATION = 0.12
 
-# assets
+# נכסים
 TRACK_BORDER = r"Assets\photo\track1-border.png"
 TRACK = r"Assets\photo\trackv3.png"
 BOMB = r'Assets\photo\bomb.png'
@@ -65,24 +65,24 @@ FINISHLINE = r'Assets\photo/finish.png'
 GRASS = r'Assets\photo\grass2.jpg'
 MENUBG = r'Assets\photo/Background.jpg'
 
-# fonts
+# גופנים
 FONT = r'Assets\fonts\Menu.ttf'
 COUNTDOWN_FONT = r'Assets\fonts\CountDownFont.otf'
 
-# sounds
+# סאונד
 WIN_SOUND = r'Assets\sound/victory.wav'
 COUNTDOWN_SOUND = r'Assets\sound/countdown.mp3'
 BACKGROUND_MUSIC = r'Assets\sound/background_music.mp3'
 COLLIDE_SOUND = r'Assets\sound/collide.mp3'
 OBSTACLE_SOUND = r'Assets\sound\obstacle_sound.mp3'
 
-DEFAULT_SOUND_VOLUME = 0.05  # %
+DEFAULT_SOUND_VOLUME = 0.05
 COLLISION_SOUND_VOLUME = 0.25
 WIN_SOUND_VOLUME = 0.25
 OBSTACLE_SOUND_VOLUME = 0.25
 COUNTDOWN_SOUND_VOLUME = 0.6
 
-# ui stuff
+# ממשק משתמש
 UI_FONT_SIZE = 22
 UI_COLOR = (255, 255, 255)
 SHADOW_COLOR = (0, 0, 0)
@@ -90,8 +90,8 @@ LINE_HEIGHT = 26
 MARGIN_X = 15
 MARGIN_Y_TOP = 10
 
-# checkpoint coordinates - drew these manually on the track
-# each checkpoint is a line segment [(x1,y1), (x2,y2)]
+# קואורדינטות צ'קפוינטים - סומנו ידנית על המסלול
+# כל צ'קפוינט הוא קטע [(x1,y1), (x2,y2)]
 TRACK_CHECKPOINT_ZONES = [
     [(236, 134), (236, 43)],
     [(204, 172), (41, 179)],
@@ -121,7 +121,7 @@ TRACK_CHECKPOINT_ZONES = [
     [(268, 275), (430, 275)],
 ]
 
-# center of each checkpoint - for distance calculations
+# מרכז כל צ'קפוינט - לחישובי מרחק
 CHECKPOINT_CENTERS = [
     (236.0, 107.9),
     (178.1, 173.1),
@@ -151,8 +151,8 @@ CHECKPOINT_CENTERS = [
     (383.4, 275.0),
 ]
 
-# bomb spawn positions - רשימת כל המיקומים האפשריים
-# randomly pick NUM_OBSTACLES from these each game
+# מיקומי הופעת פצצות - רשימת כל המיקומים האפשריים
+# בכל משחק נבחרות NUM_OBSTACLES פצצות אקראיות מהרשימה
 BOMB_LIST = [
     (296, 119), (359, 120), (340, 93), (278, 78), (245, 64), (172, 82), (149, 133),
     (99, 140), (67, 153), (135, 197), (107, 249), (65, 266), (102, 238), (144, 329),
