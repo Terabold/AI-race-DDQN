@@ -1,4 +1,3 @@
-# סביבת המשחק הראשית - עם סאונד, ספירה לאחור, תמיכה ב-2 שחקנים
 import pygame
 import numpy as np
 from scripts.Constants import (FINISHLINE_POS, CAR_START_POS, CAR1_FAIR_START, CAR2_FAIR_START, 

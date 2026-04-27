@@ -1,4 +1,3 @@
-# סביבת אימון מצומצמת - ללא סאונד וספירה לאחור
 import pygame
 import numpy as np
 from scripts.Constants import (CAR_START_POS, NUM_OBSTACLES, FINISHLINE_POS, 

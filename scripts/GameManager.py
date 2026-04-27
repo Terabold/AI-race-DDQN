@@ -1,4 +1,3 @@
-# מנהל מצב המשחק
 class GameStateManager:  
     def __init__(self):
         # מצב משחק ברירת מחדל על התפריט

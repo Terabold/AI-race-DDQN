@@ -1,4 +1,3 @@
-# פצצות - מכשולים אקראיים שמאטים את הרכב
 import pygame
 from scripts.Constants import BOMB, OBSTACLE_SIZE, OBSTACLE_HITBOX, BOMB_LIST
 from scripts.ResourceLoader import resource_manager

@@ -1,4 +1,3 @@
-# מנהל את המירוץ בפועל - אנושי מול AI וכו'
 import pygame
 import sys
 import os

@@ -1,4 +1,3 @@
-# לולאה ראשית - מחליפה בין מסכים
 import pygame
 from scripts.Constants import FPS, MENUBG, WIDTH, HEIGHT
 from scripts.menu import MainMenu, RaceSettingsMenu
