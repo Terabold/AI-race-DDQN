@@ -1,4 +1,3 @@
-# פונקציות עזר - UI, כפתורים, שכבות-על
 import pygame
 import math
 from scripts.Constants import FONT, COUNTDOWN_FONT, WIDTH, HEIGHT, BLACK, WHITE, RED, GREEN, DODGERBLUE
@@ -6,31 +5,31 @@ from scripts.ResourceLoader import resource_manager
 
 
 def font_scale(size, Font=FONT):
-    # קבלת גופן מהמטמון
     return resource_manager.get_font(Font, size)
 
 
 def create_shadowed_text(text, font, color, shadow_color=BLACK, offset=4):
-    # יצירת טקסט עם צל
     shadow = font.render(text, True, shadow_color)
     main_text = font.render(text, True, color)
+    # יצירת משטח חדש עם תמיכה בשקיפות
     combined = pygame.Surface((shadow.get_width() + offset, shadow.get_height() + offset), pygame.SRCALPHA)
-    combined.blit(shadow, (offset, offset))
-    combined.blit(main_text, (0, 0))
+    combined.blit(shadow, (offset, offset)) # ציור הצל בהסטה
+    combined.blit(main_text, (0, 0)) # ציור הטקסט הראשי
     return combined
 
 
 def smooth_sine_wave(time, period=4.0, min_val=0.0, max_val=1.0):
-    # גל סינוסי חלק לאנימציות
+    # חישוב ערך גל סינוסי מנורמל לטווח 0-1 (ליצירת אפקט פעימה חלק)
     normalized = (math.cos(time * (2 * math.pi / period)) + 1) / 2
     return min_val + normalized * (max_val - min_val)
 
 
 def calculate_ui_constants(display_size):
-    # חישוב קבועי UI מותאמי רזולוציה
+    # חישוב קבועים מותאמי רזולוציה לפי מסך ייחוס (1920x1080)
     ref_width, ref_height = 1920, 1080
     width_scale = display_size[0] / ref_width
     height_scale = display_size[1] / ref_height
+    # לוקחים את המינימום כדי לשמור על פרופורציות בלי חריגה מהמסך
     general_scale = min(width_scale, height_scale)
     
     return {
@@ -46,18 +45,18 @@ def calculate_ui_constants(display_size):
 def draw_game_overlay(environment, title, title_color, overlay_tint=None):
     current_time = pygame.time.get_ticks() / 1000
     
-    overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
-    overlay.fill((0, 0, 0, 128))
+    overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA) # יצירת מסך שקוף למחצה
+    overlay.fill((0, 0, 0, 128)) # מילוי המסך בצבע שחור חלקי שקיפות
     if overlay_tint:
-        pygame.draw.rect(overlay, overlay_tint, (0, 0, WIDTH, HEIGHT))
-    environment.surface.blit(overlay, (0, 0))
+        pygame.draw.rect(overlay, overlay_tint, (0, 0, WIDTH, HEIGHT)) # אם יש צבע נוסף, מוסיף אותו לשקיפות
+    environment.surface.blit(overlay, (0, 0)) # ציור המסך על הרקע
     
     title_text = create_shadowed_text(title, font_scale(80, FONT), title_color, BLACK, 5)
     environment.surface.blit(title_text, title_text.get_rect(center=(WIDTH//2, HEIGHT//2 - 120)))
     
     y = HEIGHT//2 - 20
-    car1 = getattr(environment, 'car1', None)
-    car2 = getattr(environment, 'car2', None)
+    car1 = environment.car1
+    car2 = environment.car2
     
     for player_num, (active, finished, car) in enumerate([
         (environment.car1_active, environment.car1_finished, car1),
@@ -65,7 +64,7 @@ def draw_game_overlay(environment, title, title_color, overlay_tint=None):
     ], 1):
         if active and car is not None:
             # זיהוי מצב כל שחקן בנפרד
-            if getattr(car, 'failed', False):
+            if car.failed:
                 status = "Crashed!"
             elif finished:
                 status = "Finished!"
@@ -95,8 +94,8 @@ def draw_failed(environment):
 def draw_ui(environment):
     # ציור טיימר ומצב רכב במהלך משחק
     y = 10
-    car1 = getattr(environment, 'car1', None)
-    car2 = getattr(environment, 'car2', None)
+    car1 = environment.car1
+    car2 = environment.car2
     
     for player_num, (active, finished, car, time) in enumerate([
         (environment.car1_active, environment.car1_finished, car1, environment.car1_time),

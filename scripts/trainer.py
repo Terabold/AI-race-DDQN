@@ -1,4 +1,3 @@
-# לולאת האימון - מריצה אפיזודות ומתעד ל-wandb
 import os
 import pygame
 import sys
@@ -10,14 +9,14 @@ from collections import deque
 
 from scripts.AIEnvironment import AIEnvironment
 from scripts.Constants import *
-from scripts.dqn_agent import DQNAgent
+from scripts.ddqn_agent import DDQNAgent
 from scripts.Reward import calculate_reward
 from scripts.GameManager import game_state_manager
 
 STATE_DIM = 33
 ACTION_DIM = 9
 
-WANDB_PROJECT = "Racing-DQN"
+WANDB_PROJECT = "Racing-DDQN"
 WANDB_RUN_ID = "train 4"
 
 class Trainer: 
@@ -35,11 +34,11 @@ class Trainer:
         self.state = None
         
         self.episode_events = {
-            'checkpoint_crosses': 0,
-            'backward_crosses': 0,
-            'obstacle_hits': 0,
-            'wall_crashes': 0,
-            'timeouts': 0
+            'checkpoint_crosses': 0,  # מספר פעמים שעבר בנקודת ביקורת
+            'backward_crosses': 0,    # מספר פעמים שעבר אחורה (רמאות)
+            'obstacle_hits': 0,       # פגיעות במכשולים (פצצות)
+            'wall_crashes': 0,        # התרסקויות בקירות
+            'timeouts': 0             # סיומים בגלל חריגת זמן
         }
         
         self.start_time = None
@@ -71,18 +70,18 @@ class Trainer:
         if device.type == 'cuda':
             print(f"GPU: {torch.cuda.get_device_name(0)}")
         
-        self.agent = DQNAgent(device=device)
+        self.agent = DDQNAgent(device=device)
         
-        model_exists = os.path.exists(self.agent.model_path)
+        model_exists = os.path.exists(self.agent.model_path) # בדיקת קיום מודל שמור
         if model_exists:
             if self.agent.load_model(self.agent.model_path):
                 print(f"Resuming from episode {self.agent.episode_count}")
         else:
-            os.makedirs(self.agent.model_dir, exist_ok=True)
-            self.agent.save_model()
+            os.makedirs(self.agent.model_dir, exist_ok=True) # יצירת תיקיית שמירת מודלים    
+            self.agent.save_model() # שמירת מודל ראשוני
             print("New model created")
         
-        if self.wandb_enabled:
+        if self.wandb_enabled:  
             self.init_wandb(model_exists)
         
         self.start_time = time.time()
@@ -98,9 +97,9 @@ class Trainer:
         try:
             wandb.init(
                 project=WANDB_PROJECT,
-                entity=None,
+                entity=None, # שם של חשבון וודב
                 id=WANDB_RUN_ID,
-                resume="allow" if resume_training else None,
+                resume="allow" if resume_training else None, # אם המודל קיים להמשיך את הגרף שלו אם לא חדש
                 config={
                     "state_dim": STATE_DIM,
                     "action_dim": ACTION_DIM,
@@ -113,8 +112,13 @@ class Trainer:
             )
             print(f"WandB: {WANDB_PROJECT}/{WANDB_RUN_ID}")
             
+            # מגדיר את מספר הסבב בתור ציר האיקס
             wandb.define_metric("episode")
+
+            # כל גרף שמתחיל בשם "episode/" יזוז על ציר האיקס לפי מספר הסבב ולא לפי צעד אקראי
             wandb.define_metric("episode/*", step_metric="episode")
+
+            # כל גרף שמתחיל בשם "performance/" יזוז על ציר האיקס לפי מספר הסבב ולא לפי צעד אקראי
             wandb.define_metric("performance/*", step_metric="episode")
             
         except Exception as e:
@@ -122,11 +126,13 @@ class Trainer:
             self.wandb_enabled = False
     
     def start_new_episode(self):
-        self.environment.reset()
-        self.steps = 0
-        self.episode_reward = 0.0
-        self.losses.clear()
-        self.state = self.environment.get_state()
+        self.environment.reset() # אתחול העולם
+        self.steps = 0  
+        self.episode_reward = 0.0 
+        self.losses.clear() # איפוס רשימת ההפסדים של הסבב הנוכחי
+        self.state = self.environment.get_state() # קבלת המצב ההתחלתי
+        
+        # איפוס מוני אירועים
         self.episode_events = {
             'checkpoint_crosses': 0,
             'backward_crosses': 0,
@@ -136,22 +142,24 @@ class Trainer:
         }
     
     def end_episode(self):
-        cp = self.environment.checkpoint_manager.crossed_count
-        finished = self.environment.car_finished
-        crashed = self.environment.car_crashed
-        timeout = self.environment.car_timeout
+        cp = self.environment.checkpoint_manager.crossed_count # מספר הנקודות בדיקה שעבר
+        finished = self.environment.car_finished # האם המכונית סיימה
+        crashed = self.environment.car_crashed # האם המכונית התרסקה
+        timeout = self.environment.car_timeout # האם המכונית איבדה זמן
         
+        # שמירה של סוג סיום
         if finished:
-            outcome = 2
+            outcome = 2  # ניצחון
             completion_time = 25.0 - self.environment.time_remaining
             self.last_100_completion_times.append(completion_time)
         elif timeout:
-            outcome = 1
+            outcome = 1  # איבוד זמן
             completion_time = 25.0
         else:
-            outcome = 0
+            outcome = 0  # התרסקות
             completion_time = 25.0
         
+        # שמירה של התוצאה של הריצה הספציפית 
         self.agent.end_episode(
             episode_reward=self.episode_reward,
             checkpoints_reached=cp,
@@ -159,22 +167,38 @@ class Trainer:
             finished=finished
         )
         
+        # ממוצע של 100 ריצות אחרונות
         self.last_100_rewards.append(self.episode_reward)
         self.last_100_checkpoints.append(cp)
         self.last_100_outcomes.append(outcome)
         self.last_100_obstacle_hits.append(self.episode_events['obstacle_hits'])
         if self.losses:
+            # חישוב ממוצע הטעויות של המודל בסבב
+            # mean([0.1, 0.2, 0.3]) -> 0.2
             self.last_100_losses.append(float(np.mean(self.losses)))
         
+        # ממוצע של 100 הריצות האחרונות
+        # [10.0, 20.0, 30.0] -> 20.0
         avg_reward = float(np.mean(self.last_100_rewards)) if self.last_100_rewards else 0.0
         avg_checkpoints = float(np.mean(self.last_100_checkpoints)) if self.last_100_checkpoints else 0.0
+        # ממוצע הטעות (ככל שקטן יותר, המודל מדויק יותר)
+        # Loss < 0.001
         avg_loss = float(np.mean(self.last_100_losses)) if self.last_100_losses else 0.0
         avg_obstacles = float(np.mean(self.last_100_obstacle_hits)) if self.last_100_obstacle_hits else 0.0
-        
-        win_rate = (sum(1 for x in self.last_100_outcomes if x == 2) / max(1, len(self.last_100_outcomes))) * 100
-        
         avg_completion = float(np.mean(self.last_100_completion_times)) if self.last_100_completion_times else 0.0
         
+        # חישוב אחוז הצלחה
+        total_episodes = len(self.last_100_outcomes)
+        if total_episodes == 0:
+            win_rate = 0.0
+        else:
+            wins = 0
+            for outcome in self.last_100_outcomes:
+                if outcome == 2:  # 2 = ניצחון
+                    wins += 1
+            win_rate = (wins / total_episodes) * 100
+        
+        # שמירת סטטוס 
         if finished:
             status = f"FINISH ({completion_time:.2f}s)"
         elif crashed:
@@ -182,32 +206,37 @@ class Trainer:
         else:
             status = "TIMEOUT"
         
+        # הדפס לוג
         print(f"Ep {self.agent.episode_count:5d} | {status:20s} | "
               f"CP:{cp:2d} | R:{self.episode_reward:6.1f} | "
               f"eps:{self.agent.epsilon:.3f} | FPS:{self.current_fps:.0f}")
         
+        # הדפס ל-wandb
         if self.wandb_enabled:
             log_data = {
                 "episode": self.agent.episode_count,
                 
+                # נתונים של הסבב הנוכחי
                 "episode/reward": self.episode_reward,
                 "episode/checkpoints": cp,
                 "episode/outcome": outcome,
                 "episode/loss": float(np.mean(self.losses)) if self.losses else 0.0,
                 
+                # ביצועים
                 "performance/win_rate": win_rate,
                 "performance/avg_reward": avg_reward,
                 "performance/avg_checkpoints": avg_checkpoints,
                 "performance/avg_loss": avg_loss,
                 "performance/avg_obstacle_hits": avg_obstacles,
                 
+                #אימון עצמו
                 "training/epsilon": self.agent.epsilon,
                 "training/learning_rate": self.agent.optimizer.param_groups[0]['lr'],
                 "training/buffer_size": len(self.agent.replay_buffer),
             }
             
             if finished:
-                log_data["episode/completion_time"] = completion_time
+                log_data["episode/completion_time"] = completion_time 
             
             if self.last_100_completion_times:
                 log_data["performance/avg_completion_time"] = avg_completion
@@ -241,7 +270,7 @@ class Trainer:
         
         self.start_new_episode()
     
-    def run(self, dt):
+    def run(self):
         if not self.initialized:
             self.initialize()
         
@@ -254,7 +283,7 @@ class Trainer:
                 elif event.key == pygame.K_v:
                     self.show_visualization = not self.show_visualization
         
-        # צעד אימון - בודק אם האפיזודה לא הסתיימה, בוחר פעולה, מבצע אותה, מקבל תגמול ומעדכן את המודל
+        # צעד אימון - בודק אם הסבב לא הסתיים, בוחר פעולה, מבצע אותה, מקבל תגמול ומעדכן את המודל
         if not self.environment.episode_ended:
             action = self.agent.get_action(self.state, training=True)
             next_state, step_info, done = self.environment.step(action)
@@ -271,10 +300,16 @@ class Trainer:
             if step_info.get('timeout'):
                 self.episode_events['timeouts'] += 1
             
+            # חישוב התגמול
             reward, _ = calculate_reward(self.environment, step_info, self.state)
             
-            self.agent.replay_buffer.add(self.state, action, reward, next_state, done)
-            loss = self.agent.update()
+            # הוספת המקבץ לריפליי באפר 
+            self.agent.replay_buffer.add(self.state, action, reward, next_state, done) 
+
+            # מעדכן את הרשת ומקבל את ערך השגיאה
+            loss = self.agent.update() 
+
+            # אם קיבלנו שגיאה תקינה, שומר אותה ברשימה
             if loss is not None:
                 self.losses.append(loss)
             
@@ -283,7 +318,7 @@ class Trainer:
             self.state = next_state
             self.fps_counter += 1
             
-            # חישוב fps לדעת ביצועים של הקוד
+            # חישוב פריימים לשנייה
             current_time = time.time()
             if current_time - self.fps_timer >= 1.0:
                 self.current_fps = self.fps_counter / (current_time - self.fps_timer)
@@ -292,9 +327,8 @@ class Trainer:
         else:
             self.end_episode()
         
-        # toggle לרנדר את המשחק או לא
-        # לרנדר = לראות כיצד המודל לומד ולשפר אך יותר איטי
-        # לא לרנדר = לא להציג את המשחק לתקופה ארוכה כדי שילמד מהר יותר אך ללא לראות התקדמות
+        # מתג הרנדר - מציג את המשחק שהמודל לומד
+        # אם כבוי - לא מציג את המשחק כדי שילמד מהר יותר
         if self.show_visualization:
             self.environment.draw()
         else:
@@ -327,7 +361,8 @@ class Trainer:
     def save_and_exit(self):
         if self.agent:
             self.agent.save_model()
-            elapsed = time.time() - self.start_time
+            # חישוב זמן כולל שעבר מתחילת האימון
+            elapsed = time.time() - self.start_time 
             print(f"Episodes: {self.agent.episode_count} | Time: {elapsed/60:.1f}m")
             if self.agent.best_finish_time > 0:
                 print(f"Best Time: {25.0 - self.agent.best_finish_time:.2f}s")

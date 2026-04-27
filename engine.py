@@ -7,11 +7,11 @@ from scripts.ResourceLoader import resource_manager
 
 class Engine:
     def __init__(self):
-        # התחלת pygame במנוע הפרויקט
+        # התחלת pygame
         pygame.init()
         pygame.joystick.quit()
         
-        # ליצור חלון משחק
+        # יצירת חלון משחק
         pygame.display.set_caption('DDQN RACE')
         self.display = pygame.display.set_mode((WIDTH, HEIGHT))
         self.clock = pygame.time.Clock()
@@ -30,7 +30,7 @@ class Engine:
         # טעינת הכל
         resource_manager.load_all()
         
-        # אנימציית מסך התחלה loading
+        # אנימציית טעינה קוסמטית (לשיפור חווית המשתמש ומעבר חלק לתפריט)
         for msg in loading_messages * 2:
             self.display.fill((0, 0, 0))
             text = font.render(msg, True, (255, 255, 255))
@@ -51,9 +51,16 @@ class Engine:
         previous_state = None
 
         while True:
-            current_state = game_state_manager.getState()
+            # קבלת המצב הנוכחי (תפריט, משחק, או אימון) מנהל המצבים
+            current_state = game_state_manager.get_state()
             
-            # החלפת מצבים
+            # בדיקת אירועי יציאה מהמשחק
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    return
+            
+            # ניהול מעברים בין מצבי המשחק
             if previous_state != current_state:
                 if current_state == 'game':
                     if self.game is None:
@@ -68,11 +75,11 @@ class Engine:
 
             # הגדרת הגבלת פריימים למשחק ולאימון
             if current_state == 'training':
-                dt = self.clock.tick() / 1000.0
+                self.clock.tick()
             else:
-                dt = self.clock.tick(FPS) / 1000.0
+                self.clock.tick(FPS)
 
-            # להריץ את המסך של ה-state הנבחר
+            # להריץ את המסך של המצב משחק הנבחר
             if current_state == 'menu':
                 self.display.blit(self.menu_bg, (0, 0))
                 self.main_menu.run()
@@ -80,9 +87,9 @@ class Engine:
                 self.display.blit(self.menu_bg, (0, 0))
                 self.settings_menu.run()
             elif current_state == 'game':
-                self.game.run(dt)
+                self.game.run()
             elif current_state == 'training':
-                self.trainer.run(dt)
+                self.trainer.run()
 
             previous_state = current_state
             pygame.display.flip()

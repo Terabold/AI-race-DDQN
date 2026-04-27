@@ -1,303 +1,1163 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-<meta charset="UTF-8">
-<title>Checkpoint Editor</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<style>
-    * { box-sizing: border-box; margin:0; padding:0; }
-    html,body { height:100%; overflow:hidden; background:#222; font-family:Segoe UI,Arial,sans-serif; }
-    .app { display:flex; height:100%; }
-    .sidebar {
-        width:360px; background:#2d3436; color:#ddd; padding:20px;
-        overflow-y:auto; flex-shrink:0;
-    }
-    .canvas-area {
-        flex:1; background:#ddd; position:relative; overflow:hidden;
-    }
-    #trackCanvas { display:block; transform-origin:0 0; cursor:grab; }
-    .btn {
-        width:100%; padding:10px; margin:5px 0; border:none; border-radius:6px;
-        font-weight:bold; cursor:pointer;
-    }
-    .btn-primary { background:#667eea; color:#fff; }
-    .btn-success { background:#00b894; color:#fff; }
-    .btn-danger  { background:#ff7675; color:#fff; }
-    .btn-warning { background:#fdcb6e; color:#2d3436; }
-    .checkpoint-list { margin-top:20px; }
-    .checkpoint-item {
-        background:#34495e; padding:10px; margin:5px 0;
-        border-left:4px solid #667eea; display:flex;
-        justify-content:space-between; align-items:center;
-        font-size:0.95rem;
-    }
-    .btn-small {
-        padding:4px 8px; font-size:11px; margin-left:3px;
-        border:none; border-radius:4px; cursor:pointer;
-    }
-    .status { margin:15px 0; line-height:1.5; }
-    textarea { width:100%; height:150px; margin-top:5px; background:#222; color:#0f0; }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checkpoint Editor</title>
+    <style>
+        :root {
+            --bg: #0b1120;
+            --panel: #111827;
+            --panel-2: #162033;
+            --panel-3: #1f2937;
+            --line: #22d3ee;
+            --line-soft: rgba(34, 211, 238, 0.35);
+            --yellow: #fde047;
+            --orange: #fb923c;
+            --text: #f8fafc;
+            --muted: #94a3b8;
+            --border: #2a3a52;
+            --danger: #ef4444;
+            --green: #22c55e;
+            --blue: #38bdf8;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            height: 100vh;
+            overflow: hidden;
+            background: var(--bg);
+            color: var(--text);
+            font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+        }
+
+        .app {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            height: 100vh;
+            min-width: 920px;
+        }
+
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            min-height: 0;
+            padding: 18px;
+            background: linear-gradient(180deg, #111827 0%, #0f172a 100%);
+            border-right: 1px solid var(--border);
+        }
+
+        .brand h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 760;
+            letter-spacing: 0;
+        }
+
+        .brand p {
+            margin: 4px 0 0;
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        .section {
+            display: grid;
+            gap: 8px;
+        }
+
+        .section-title {
+            color: #cbd5e1;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0;
+        }
+
+        button {
+            min-height: 34px;
+            border: 1px solid var(--border);
+            border-radius: 7px;
+            padding: 8px 10px;
+            background: var(--panel-3);
+            color: var(--text);
+            font: inherit;
+            font-size: 13px;
+            font-weight: 650;
+            cursor: pointer;
+            transition: background 120ms ease, border-color 120ms ease, transform 120ms ease;
+        }
+
+        button:hover {
+            background: #263449;
+            border-color: #3b526f;
+        }
+
+        button:active {
+            transform: translateY(1px);
+        }
+
+        button.primary {
+            background: #0e7490;
+            border-color: #0891b2;
+        }
+
+        button.primary:hover {
+            background: #0891b2;
+        }
+
+        button.danger {
+            background: #7f1d1d;
+            border-color: #991b1b;
+        }
+
+        button.danger:hover {
+            background: #991b1b;
+        }
+
+        button.small {
+            min-width: 30px;
+            width: 30px;
+            min-height: 28px;
+            padding: 0;
+            font-size: 14px;
+        }
+
+        .button-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .status {
+            display: grid;
+            gap: 7px;
+            padding: 10px;
+            border: 1px solid var(--border);
+            border-radius: 7px;
+            background: rgba(15, 23, 42, 0.85);
+        }
+
+        .status-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            font-size: 13px;
+        }
+
+        .status-row span:first-child {
+            color: var(--muted);
+        }
+
+        .status-pill {
+            color: #001018;
+            background: var(--green);
+            padding: 2px 7px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 760;
+        }
+
+        textarea {
+            width: 100%;
+            height: 112px;
+            resize: vertical;
+            border: 1px solid var(--border);
+            border-radius: 7px;
+            padding: 10px;
+            outline: none;
+            background: #08111f;
+            color: #dbeafe;
+            font: 12px Consolas, "SFMono-Regular", Menlo, monospace;
+            line-height: 1.45;
+        }
+
+        textarea:focus {
+            border-color: #0891b2;
+        }
+
+        .checkpoint-list {
+            display: grid;
+            gap: 7px;
+            min-height: 120px;
+            overflow: auto;
+            padding-right: 2px;
+        }
+
+        .checkpoint-list-wrap {
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+            flex: 1;
+        }
+
+        .checkpoint-item {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 8px;
+            align-items: center;
+            padding: 9px;
+            border: 1px solid var(--border);
+            border-radius: 7px;
+            background: rgba(30, 41, 59, 0.72);
+            cursor: pointer;
+        }
+
+        .checkpoint-item:hover,
+        .checkpoint-item.hovered {
+            border-color: rgba(34, 211, 238, 0.65);
+            background: rgba(30, 64, 82, 0.7);
+        }
+
+        .cp-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 4px;
+            font-size: 13px;
+            font-weight: 760;
+        }
+
+        .cp-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--line);
+        }
+
+        .cp-coords,
+        .cp-distance {
+            color: var(--muted);
+            font: 11px Consolas, "SFMono-Regular", Menlo, monospace;
+            line-height: 1.35;
+            overflow-wrap: anywhere;
+        }
+
+        .cp-actions {
+            display: grid;
+            grid-template-columns: 30px 30px;
+            gap: 5px;
+        }
+
+        .cp-actions .delete {
+            grid-column: span 2;
+            width: 65px;
+            color: #fee2e2;
+            background: #7f1d1d;
+            border-color: #991b1b;
+        }
+
+        .empty {
+            padding: 14px;
+            border: 1px dashed var(--border);
+            border-radius: 7px;
+            color: var(--muted);
+            font-size: 13px;
+            text-align: center;
+        }
+
+        .workspace {
+            position: relative;
+            min-width: 0;
+            overflow: hidden;
+            background:
+                radial-gradient(circle at 20% 10%, rgba(56, 189, 248, 0.08), transparent 30%),
+                linear-gradient(180deg, #07111f 0%, #0b1120 100%);
+        }
+
+        .toolbar {
+            position: absolute;
+            z-index: 5;
+            top: 14px;
+            left: 14px;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            padding: 7px;
+            border: 1px solid rgba(148, 163, 184, 0.24);
+            border-radius: 8px;
+            background: rgba(15, 23, 42, 0.88);
+            backdrop-filter: blur(10px);
+        }
+
+        .toolbar button {
+            min-height: 30px;
+            padding: 5px 9px;
+        }
+
+        .hint {
+            position: absolute;
+            z-index: 5;
+            left: 14px;
+            bottom: 14px;
+            max-width: min(760px, calc(100% - 28px));
+            padding: 9px 11px;
+            border: 1px solid rgba(148, 163, 184, 0.22);
+            border-radius: 8px;
+            background: rgba(15, 23, 42, 0.86);
+            color: #cbd5e1;
+            font-size: 12px;
+            backdrop-filter: blur(10px);
+        }
+
+        .toast {
+            position: absolute;
+            z-index: 6;
+            top: 14px;
+            right: 14px;
+            max-width: 360px;
+            padding: 10px 12px;
+            border: 1px solid rgba(34, 211, 238, 0.35);
+            border-radius: 8px;
+            background: rgba(8, 47, 73, 0.92);
+            color: #e0f2fe;
+            font-size: 13px;
+            opacity: 0;
+            transform: translateY(-8px);
+            transition: opacity 180ms ease, transform 180ms ease;
+            pointer-events: none;
+        }
+
+        .toast.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            cursor: crosshair;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+    </style>
 </head>
+
 <body>
-<div class="app">
-    <div class="sidebar">
-        <h2>Checkpoint Editor</h2>
+    <div class="app">
+        <aside class="sidebar">
+            <div class="brand">
+                <h1>Checkpoint Editor</h1>
+                <p>Track racing checkpoint tool</p>
+            </div>
 
-        <label class="btn btn-primary">
-            Load Track Image
-            <input type="file" id="imageUpload" accept="image/*" style="display:none;">
-        </label>
+            <div class="section">
+                <button class="primary" id="loadImageBtn">Load Track Image</button>
+                <input id="imageInput" type="file" accept="image/*">
+                <div class="button-row">
+                    <button id="clearCurrentBtn">Clear Current</button>
+                    <button class="danger" id="clearAllBtn">Clear All</button>
+                </div>
+            </div>
 
-        <div class="controls">
-            <button class="btn btn-danger" onclick="clearCurrent()">Clear Current</button>
-            <button class="btn btn-warning" onclick="clearAll()">Clear All</button>
-        </div>
+            <div class="section">
+                <div class="section-title">Status</div>
+                <div class="status">
+                    <div class="status-row">
+                        <span>Status</span>
+                        <strong class="status-pill" id="statusText">Ready</strong>
+                    </div>
+                    <div class="status-row">
+                        <span>Checkpoints</span>
+                        <strong id="countText">0</strong>
+                    </div>
+                    <div class="status-row">
+                        <span>Cursor</span>
+                        <strong id="cursorText">0, 0</strong>
+                    </div>
+                </div>
+            </div>
 
-        <div class="status">
-            <strong>Status:</strong> <span id="statusText">Load an image</span><br>
-            <strong>Checkpoints:</strong> <span id="checkpointCount">0</span>
-        </div>
+            <div class="section">
+                <div class="section-title">Import</div>
+                <textarea id="importText" spellcheck="false" placeholder="TRACK_CHECKPOINT_ZONES = [
+    [(236, 134), (236, 43)],
+    [(204, 172), (41, 179)],
+]"></textarea>
+                <button id="importBtn">Import</button>
+            </div>
 
-        <h3>Checkpoints</h3>
-        <div class="checkpoint-list" id="checkpointList"></div>
+            <div class="checkpoint-list-wrap">
+                <div class="section-title">Checkpoints</div>
+                <div class="checkpoint-list" id="checkpointList"></div>
+            </div>
 
-        <h3>Export Python Code</h3>
-        <button class="btn btn-primary" onclick="exportCode()">Copy to Clipboard</button>
-        <textarea id="codeOutput" readonly></textarea>
+            <div class="section">
+                <div class="section-title">Export</div>
+                <button class="primary" id="copyBtn">Copy Python Code</button>
+            </div>
+        </aside>
+
+        <main class="workspace" id="workspace">
+            <div class="toolbar">
+                <button id="zoomOutBtn">-</button>
+                <button id="fitBtn">Fit</button>
+                <button id="zoomInBtn">+</button>
+                <button id="resetBtn">100%</button>
+            </div>
+            <canvas id="editorCanvas"></canvas>
+            <div class="hint" id="hintText">Click twice on the track to create a checkpoint. Drag yellow endpoints to
+                edit the checkpoint line. Click a checkpoint in the left list, then click on the canvas to place its
+                center point precisely along that checkpoint line.</div>
+            <div class="toast" id="toast"></div>
+        </main>
     </div>
 
-    <div class="canvas-area" id="canvasContainer">
-        <canvas id="trackCanvas"></canvas>
-    </div>
-</div>
+    <script>
+        const canvas = document.getElementById("editorCanvas");
+        const ctx = canvas.getContext("2d");
+        const workspace = document.getElementById("workspace");
+        const imageInput = document.getElementById("imageInput");
+        const loadImageBtn = document.getElementById("loadImageBtn");
+        const clearCurrentBtn = document.getElementById("clearCurrentBtn");
+        const clearAllBtn = document.getElementById("clearAllBtn");
+        const importText = document.getElementById("importText");
+        const importBtn = document.getElementById("importBtn");
+        const copyBtn = document.getElementById("copyBtn");
+        const checkpointList = document.getElementById("checkpointList");
+        const statusText = document.getElementById("statusText");
+        const countText = document.getElementById("countText");
+        const cursorText = document.getElementById("cursorText");
+        const toast = document.getElementById("toast");
 
-<script>
-/* ---------- GLOBALS ---------- */
-const canvas = document.getElementById('trackCanvas');
-const ctx = canvas.getContext('2d');
-const container = document.getElementById('canvasContainer');
+        const HIT_RADIUS = 10;
+        const GRID_SIZE = 50;
 
-let trackImage = null;
-let checkpoints = [];
-let currentPoints = [];
+        let trackImage = null;
+        let worldWidth = 1600;
+        let worldHeight = 950;
+        let checkpoints = [];
+        let selectedIndex = -1;
+        let editingCenterIndex = -1;
+        let centerPreview = null;
+        let hovered = null;
+        let sidebarHoverIndex = -1;
+        let draftPoint = null;
+        let pointer = { x: 0, y: 0 };
+        let isPointerDown = false;
+        let drag = null;
+        let view = { scale: 1, x: 0, y: 0 };
+        let rafPending = false;
+        let listDirty = true;
 
-let scale = 1;
-let offsetX = 0, offsetY = 0;
-let isDragging = false;
-let dragStartX = 0, dragStartY = 0;
+        function formatNumber(value) {
+            const rounded = Math.round(value);
+            if (Math.abs(value - rounded) < 0.001) return String(rounded);
+            return value.toFixed(2).replace(/\.?0+$/, "");
+        }
 
-/* ---------- IMAGE LOAD ---------- */
-document.getElementById('imageUpload').addEventListener('change', e => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = ev => {
-        trackImage = new Image();
-        trackImage.onload = () => {
-            canvas.width = trackImage.width;
-            canvas.height = trackImage.height;
-            redraw();
-            updateStatus('Image loaded – click to add checkpoints');
-        };
-        trackImage.src = ev.target.result;
-    };
-    reader.readAsDataURL(file);
-});
+        function formatCenterNumber(value) {
+            return Number(value).toFixed(1);
+        }
 
-/* ---------- CLICK TO ADD ---------- */
-canvas.addEventListener('click', e => {
-    if (!trackImage) return;
-    const rect = canvas.getBoundingClientRect();
-    const x = (e.clientX - rect.left - offsetX) / scale;
-    const y = (e.clientY - rect.top - offsetY) / scale;
+        function distance(a, b) {
+            return Math.hypot(a.x - b.x, a.y - b.y);
+        }
 
-    currentPoints.push([x, y]);
-    redraw();
+        function checkpointLength(cp) {
+            return Math.hypot(cp.x2 - cp.x1, cp.y2 - cp.y1);
+        }
 
-    if (currentPoints.length === 1) {
-        updateStatus('Click second point');
-    } else if (currentPoints.length === 2) {
-        checkpoints.push([currentPoints[0], currentPoints[1]]);
-        currentPoints = [];
-        updateCheckpointList();
-        exportCode();
-        redraw();
-        const dist = checkpoints.length > 1 ? distanceBetweenLastTwo() : 0;
-        updateStatus(`Checkpoint ${checkpoints.length} added – Δ${dist.toFixed(0)}px`);
-    }
-});
+        function centerOf(cp) {
+            if (Number.isFinite(cp.cx) && Number.isFinite(cp.cy)) {
+                return { x: cp.cx, y: cp.cy };
+            }
+            return {
+                x: (cp.x1 + cp.x2) / 2,
+                y: (cp.y1 + cp.y2) / 2
+            };
+        }
 
-/* ---------- ZOOM / PAN ---------- */
-container.addEventListener('wheel', e => {
-    e.preventDefault();
-    const zoom = 1 - e.deltaY * 0.001;
-    scale = Math.max(0.2, Math.min(5, scale * zoom));
-    redraw();
-});
-container.addEventListener('mousedown', e => {
-    isDragging = true;
-    dragStartX = e.clientX - offsetX;
-    dragStartY = e.clientY - offsetY;
-    container.style.cursor = 'grabbing';
-});
-container.addEventListener('mousemove', e => {
-    if (!isDragging) return;
-    offsetX = e.clientX - dragStartX;
-    offsetY = e.clientY - dragStartY;
-    redraw();
-});
-container.addEventListener('mouseup', () => { isDragging = false; container.style.cursor = 'grab'; });
-container.addEventListener('mouseleave', () => { isDragging = false; container.style.cursor = 'grab'; });
+        function midpointOf(cp) {
+            return {
+                x: (cp.x1 + cp.x2) / 2,
+                y: (cp.y1 + cp.y2) / 2
+            };
+        }
 
-/* ---------- DRAWING ---------- */
-function redraw() {
-    ctx.setTransform(scale, 0, 0, scale, offsetX, offsetY);
-    ctx.clearRect(-offsetX/scale, -offsetY/scale, canvas.width/scale, canvas.height/scale);
-    if (trackImage) ctx.drawImage(trackImage, 0, 0);
+        function closestPointOnCheckpoint(point, cp) {
+            const ax = cp.x1;
+            const ay = cp.y1;
+            const bx = cp.x2;
+            const by = cp.y2;
+            const vx = bx - ax;
+            const vy = by - ay;
+            const lenSq = vx * vx + vy * vy;
+            if (lenSq === 0) return { x: ax, y: ay };
 
-    checkpoints.forEach((cp, i) => {
-        const [p1, p2] = cp;
-        // line
-        ctx.strokeStyle = '#00b894';
-        ctx.lineWidth = 4 / scale;
-        ctx.beginPath();
-        ctx.moveTo(p1[0], p1[1]);
-        ctx.lineTo(p2[0], p2[1]);
-        ctx.stroke();
+            const t = Math.max(0, Math.min(1, ((point.x - ax) * vx + (point.y - ay) * vy) / lenSq));
+            return {
+                x: ax + vx * t,
+                y: ay + vy * t
+            };
+        }
 
-        // endpoints
-        [p1, p2].forEach(p => {
+        function screenToWorld(clientX, clientY) {
+            const rect = canvas.getBoundingClientRect();
+            return {
+                x: (clientX - rect.left - view.x) / view.scale,
+                y: (clientY - rect.top - view.y) / view.scale
+            };
+        }
+
+        function worldToScreen(point) {
+            return {
+                x: point.x * view.scale + view.x,
+                y: point.y * view.scale + view.y
+            };
+        }
+
+        function clampView() {
+            if (!canvas.width || !canvas.height) return;
+            const minScale = Math.min(canvas.width / worldWidth, canvas.height / worldHeight) * 0.25;
+            view.scale = Math.max(minScale, Math.min(view.scale, 8));
+        }
+
+        function fitView() {
+            const pad = 46;
+            const scaleX = (canvas.width - pad * 2) / worldWidth;
+            const scaleY = (canvas.height - pad * 2) / worldHeight;
+            view.scale = Math.max(0.05, Math.min(scaleX, scaleY));
+            view.x = (canvas.width - worldWidth * view.scale) / 2;
+            view.y = (canvas.height - worldHeight * view.scale) / 2;
+            requestDraw();
+        }
+
+        function resizeCanvas() {
+            const dpr = window.devicePixelRatio || 1;
+            const rect = workspace.getBoundingClientRect();
+            canvas.width = Math.max(1, Math.floor(rect.width * dpr));
+            canvas.height = Math.max(1, Math.floor(rect.height * dpr));
+            canvas.style.width = rect.width + "px";
+            canvas.style.height = rect.height + "px";
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            canvas.width = Math.floor(rect.width);
+            canvas.height = Math.floor(rect.height);
+            fitView();
+        }
+
+        function requestDraw() {
+            if (rafPending) return;
+            rafPending = true;
+            requestAnimationFrame(() => {
+                rafPending = false;
+                draw();
+            });
+        }
+
+        function setStatus(text) {
+            statusText.textContent = text;
+            statusText.style.background = text === "Editing" ? "#f59e0b" : "#22c55e";
+        }
+
+        function showToast(message) {
+            toast.textContent = message;
+            toast.classList.add("visible");
+            window.clearTimeout(showToast.timer);
+            showToast.timer = window.setTimeout(() => toast.classList.remove("visible"), 2200);
+        }
+
+        function markListDirty() {
+            listDirty = true;
+        }
+
+        function drawGrid() {
+            ctx.save();
+            ctx.translate(view.x, view.y);
+            ctx.scale(view.scale, view.scale);
+            ctx.fillStyle = "#08111f";
+            ctx.fillRect(0, 0, worldWidth, worldHeight);
+            ctx.strokeStyle = "rgba(148, 163, 184, 0.12)";
+            ctx.lineWidth = 1 / view.scale;
+
+            for (let x = 0; x <= worldWidth; x += GRID_SIZE) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, worldHeight);
+                ctx.stroke();
+            }
+            for (let y = 0; y <= worldHeight; y += GRID_SIZE) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(worldWidth, y);
+                ctx.stroke();
+            }
+
+            ctx.fillStyle = "rgba(226, 232, 240, 0.72)";
+            ctx.font = `${12 / view.scale}px Arial`;
+            ctx.fillText("Load a track image or import checkpoints to begin", 24, 34);
+            ctx.restore();
+        }
+
+        function drawPoint(point, color, radius) {
+            ctx.save();
             ctx.beginPath();
-            ctx.arc(p[0], p[1], 6/scale, 0, Math.PI*2);
-            ctx.fillStyle = '#00b894';
+            ctx.arc(point.x, point.y, radius / view.scale, 0, Math.PI * 2);
+            ctx.fillStyle = color;
             ctx.fill();
+            ctx.lineWidth = 1.5 / view.scale;
+            ctx.strokeStyle = "rgba(2, 6, 23, 0.9)";
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        function drawCheckpoint(cp, index, mode) {
+            const hoveredLine = mode === "hovered";
+            const center = centerOf(cp);
+            const length = checkpointLength(cp);
+
+            ctx.save();
+            ctx.strokeStyle = hoveredLine ? "#67e8f9" : "#22d3ee";
+            ctx.lineWidth = (hoveredLine ? 4 : 3) / view.scale;
+            ctx.lineCap = "round";
+            ctx.beginPath();
+            ctx.moveTo(cp.x1, cp.y1);
+            ctx.lineTo(cp.x2, cp.y2);
+            ctx.stroke();
+            ctx.restore();
+
+            drawPoint({ x: cp.x1, y: cp.y1 }, "#fde047", hovered?.index === index && hovered?.part === "p1" ? 8 : 6);
+            drawPoint({ x: cp.x2, y: cp.y2 }, "#fde047", hovered?.index === index && hovered?.part === "p2" ? 8 : 6);
+            drawPoint(center, "#fb923c", editingCenterIndex === index ? 8 : 6);
+
+            ctx.save();
+            ctx.font = `${12 / view.scale}px Arial`;
+            ctx.textBaseline = "bottom";
+            ctx.fillStyle = "rgba(248, 250, 252, 0.95)";
+            ctx.strokeStyle = "rgba(2, 6, 23, 0.9)";
+            ctx.lineWidth = 4 / view.scale;
+            const label = `CP ${index + 1}  Δ ${formatNumber(length)} px`;
+            ctx.strokeText(label, center.x + 10 / view.scale, center.y - 10 / view.scale);
+            ctx.fillText(label, center.x + 10 / view.scale, center.y - 10 / view.scale);
+            ctx.restore();
+        }
+
+        function drawCenterConnections(previewIndex = -1, previewPoint = null) {
+            ctx.save();
+            ctx.strokeStyle = "rgba(255, 255, 255, 0.45)";
+            ctx.lineWidth = 1.5 / view.scale;
+            ctx.setLineDash([7 / view.scale, 8 / view.scale]);
+            ctx.lineCap = "round";
+            for (let i = 0; i < checkpoints.length - 1; i += 1) {
+                const a = i === previewIndex && previewPoint ? previewPoint : centerOf(checkpoints[i]);
+                const b = i + 1 === previewIndex && previewPoint ? previewPoint : centerOf(checkpoints[i + 1]);
+                ctx.beginPath();
+                ctx.moveTo(a.x, a.y);
+                ctx.lineTo(b.x, b.y);
+                ctx.stroke();
+            }
+            ctx.restore();
+        }
+
+        function drawCenterPlacementPreview() {
+            if (editingCenterIndex < 0 || !centerPreview) return;
+
+            ctx.save();
+            ctx.strokeStyle = "rgba(251, 146, 60, 0.85)";
+            ctx.lineWidth = 1.5 / view.scale;
+            ctx.setLineDash([5 / view.scale, 5 / view.scale]);
+            const cp = checkpoints[editingCenterIndex];
+            ctx.beginPath();
+            ctx.moveTo(cp.x1, cp.y1);
+            ctx.lineTo(centerPreview.x, centerPreview.y);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(centerPreview.x, centerPreview.y);
+            ctx.lineTo(cp.x2, cp.y2);
+            ctx.stroke();
+            ctx.restore();
+
+            drawCenterConnections(editingCenterIndex, centerPreview);
+            drawPoint(centerPreview, "rgba(251, 146, 60, 0.48)", 9);
+        }
+
+        function drawDraft() {
+            if (!draftPoint) return;
+            ctx.save();
+            ctx.strokeStyle = "rgba(34, 211, 238, 0.55)";
+            ctx.lineWidth = 2 / view.scale;
+            ctx.setLineDash([8 / view.scale, 6 / view.scale]);
+            ctx.beginPath();
+            ctx.moveTo(draftPoint.x, draftPoint.y);
+            ctx.lineTo(pointer.x, pointer.y);
+            ctx.stroke();
+            drawPoint(draftPoint, "#fde047", 6);
+            drawPoint(pointer, "rgba(253, 224, 71, 0.65)", 5);
+            ctx.restore();
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = "#07111f";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.save();
+            ctx.translate(view.x, view.y);
+            ctx.scale(view.scale, view.scale);
+
+            if (trackImage) {
+                ctx.drawImage(trackImage, 0, 0, worldWidth, worldHeight);
+            } else {
+                ctx.restore();
+                drawGrid();
+                ctx.save();
+                ctx.translate(view.x, view.y);
+                ctx.scale(view.scale, view.scale);
+            }
+
+            drawCenterConnections();
+
+            checkpoints.forEach((cp, index) => {
+                const mode = index === sidebarHoverIndex || hovered?.index === index || editingCenterIndex === index ? "hovered" : "normal";
+                drawCheckpoint(cp, index, mode);
+            });
+
+            drawCenterPlacementPreview();
+
+            drawDraft();
+            ctx.restore();
+
+            if (listDirty) {
+                renderList();
+                listDirty = false;
+            }
+            updateStatus();
+        }
+
+        function nearestHit(point) {
+            let best = null;
+            let bestDistance = HIT_RADIUS / view.scale;
+
+            checkpoints.forEach((cp, index) => {
+                const candidates = [
+                    { part: "p1", point: { x: cp.x1, y: cp.y1 } },
+                    { part: "p2", point: { x: cp.x2, y: cp.y2 } }
+                ];
+
+                candidates.forEach(candidate => {
+                    const d = distance(point, candidate.point);
+                    if (d <= bestDistance) {
+                        bestDistance = d;
+                        best = { index, part: candidate.part };
+                    }
+                });
+            });
+
+            return best;
+        }
+
+        function selectCheckpoint(index) {
+            editingCenterIndex = index;
+            centerPreview = closestPointOnCheckpoint(pointer, checkpoints[index]);
+            showToast(`Editing center for CP ${index + 1}`);
+            markListDirty();
+            requestDraw();
+        }
+
+        function addCheckpoint(p1, p2) {
+            const cp = { x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y };
+            const center = midpointOf(cp);
+            cp.cx = center.x;
+            cp.cy = center.y;
+            checkpoints.push(cp);
+            selectedIndex = -1;
+            editingCenterIndex = -1;
+            centerPreview = null;
+            draftPoint = null;
+            markListDirty();
+            showToast(`Created CP ${checkpoints.length}`);
+            requestDraw();
+        }
+
+        function updateStatus() {
+            countText.textContent = checkpoints.length;
+            cursorText.textContent = `${formatNumber(pointer.x)}, ${formatNumber(pointer.y)}`;
+            setStatus(draftPoint || drag ? "Editing" : "Ready");
+        }
+
+        function renderList() {
+            const active = document.activeElement;
+            if (active && active.closest && active.closest(".checkpoint-list")) return;
+
+            checkpointList.innerHTML = "";
+            if (!checkpoints.length) {
+                const empty = document.createElement("div");
+                empty.className = "empty";
+                empty.textContent = "No checkpoints yet";
+                checkpointList.appendChild(empty);
+                return;
+            }
+
+            checkpoints.forEach((cp, index) => {
+                const item = document.createElement("div");
+                item.className = "checkpoint-item";
+                if (index === sidebarHoverIndex) item.classList.add("hovered");
+
+                const length = checkpointLength(cp);
+                const center = centerOf(cp);
+                item.innerHTML = `
+                    <div>
+                        <div class="cp-title"><span class="cp-dot"></span>CP ${index + 1}</div>
+                        <div class="cp-coords">(${formatNumber(cp.x1)}, ${formatNumber(cp.y1)}) -&gt; (${formatNumber(cp.x2)}, ${formatNumber(cp.y2)})</div>
+                        <div class="cp-coords">Center: (${formatNumber(center.x)}, ${formatNumber(center.y)})</div>
+                        <div class="cp-distance">Δ ${formatNumber(length)} px</div>
+                    </div>
+                    <div class="cp-actions">
+                        <button class="small" data-action="up" title="Move up">↑</button>
+                        <button class="small" data-action="down" title="Move down">↓</button>
+                        <button class="small delete" data-action="delete" title="Delete">Delete</button>
+                    </div>
+                `;
+
+                item.addEventListener("click", event => {
+                    const action = event.target.dataset.action;
+                    if (action) {
+                        event.stopPropagation();
+                        handleListAction(action, index);
+                        return;
+                    }
+                    selectCheckpoint(index);
+                });
+                item.addEventListener("mouseenter", () => {
+                    sidebarHoverIndex = index;
+                    requestDraw();
+                });
+                item.addEventListener("mouseleave", () => {
+                    sidebarHoverIndex = -1;
+                    requestDraw();
+                });
+                checkpointList.appendChild(item);
+            });
+        }
+
+        function handleListAction(action, index) {
+            if (action === "delete") {
+                checkpoints.splice(index, 1);
+                if (selectedIndex === index) selectedIndex = -1;
+                else if (selectedIndex > index) selectedIndex -= 1;
+                if (editingCenterIndex === index) {
+                    editingCenterIndex = -1;
+                    centerPreview = null;
+                } else if (editingCenterIndex > index) {
+                    editingCenterIndex -= 1;
+                }
+            }
+
+            if (action === "up" && index > 0) {
+                [checkpoints[index - 1], checkpoints[index]] = [checkpoints[index], checkpoints[index - 1]];
+                selectedIndex = -1;
+                editingCenterIndex = -1;
+                centerPreview = null;
+            }
+
+            if (action === "down" && index < checkpoints.length - 1) {
+                [checkpoints[index + 1], checkpoints[index]] = [checkpoints[index], checkpoints[index + 1]];
+                selectedIndex = -1;
+                editingCenterIndex = -1;
+                centerPreview = null;
+            }
+
+            markListDirty();
+            requestDraw();
+        }
+
+        function parseCheckpoints(text) {
+            const bodyMatch = text.match(/TRACK_CHECKPOINT_ZONES\s*=\s*\[([\s\S]*)\]/);
+            const body = bodyMatch ? bodyMatch[1] : text;
+            const regex = /\[\s*\(\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*\)\s*,\s*\(\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*\)\s*\]/g;
+            const parsed = [];
+            let match;
+
+            while ((match = regex.exec(body)) !== null) {
+                parsed.push({
+                    x1: Number(match[1]),
+                    y1: Number(match[2]),
+                    x2: Number(match[3]),
+                    y2: Number(match[4])
+                });
+            }
+
+            const centerMatch = text.match(/CHECKPOINT_CENTERS\s*=\s*\[([\s\S]*)\]/);
+            if (centerMatch) {
+                const centerRegex = /\(\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*\)/g;
+                const centers = [];
+                let centerItem;
+                while ((centerItem = centerRegex.exec(centerMatch[1])) !== null) {
+                    centers.push({ x: Number(centerItem[1]), y: Number(centerItem[2]) });
+                }
+
+                centers.forEach((center, index) => {
+                    if (parsed[index]) {
+                        parsed[index].cx = center.x;
+                        parsed[index].cy = center.y;
+                    }
+                });
+            }
+
+            parsed.forEach(cp => {
+                if (!Number.isFinite(cp.cx) || !Number.isFinite(cp.cy)) {
+                    const center = midpointOf(cp);
+                    cp.cx = center.x;
+                    cp.cy = center.y;
+                }
+            });
+
+            return parsed;
+        }
+
+        function importCheckpoints() {
+            const parsed = parseCheckpoints(importText.value);
+            if (!parsed.length) {
+                showToast("Import failed: no checkpoint segments found.");
+                return;
+            }
+            checkpoints = parsed;
+            selectedIndex = -1;
+            editingCenterIndex = -1;
+            centerPreview = null;
+            draftPoint = null;
+            importText.value = "";
+            markListDirty();
+            showToast(`Imported ${checkpoints.length} checkpoints`);
+            requestDraw();
+        }
+
+        function exportPython() {
+            const lines = [];
+            lines.push("TRACK_CHECKPOINT_ZONES = [");
+            checkpoints.forEach(cp => {
+                lines.push(`    [(${formatNumber(cp.x1)}, ${formatNumber(cp.y1)}), (${formatNumber(cp.x2)}, ${formatNumber(cp.y2)})],`);
+            });
+            lines.push("]");
+            lines.push("");
+            lines.push("# מרכז כל צ'קפוינט - לחישובי מרחק");
+            lines.push("CHECKPOINT_CENTERS = [");
+            checkpoints.forEach(cp => {
+                const center = centerOf(cp);
+                lines.push(`    (${formatCenterNumber(center.x)}, ${formatCenterNumber(center.y)}),`);
+            });
+            lines.push("]");
+
+            const output = lines.join("\n");
+            navigator.clipboard.writeText(output)
+                .then(() => showToast("Python checkpoint code copied to clipboard."))
+                .catch(() => {
+                    const fallback = document.createElement("textarea");
+                    fallback.value = output;
+                    document.body.appendChild(fallback);
+                    fallback.select();
+                    document.execCommand("copy");
+                    fallback.remove();
+                    showToast("Python checkpoint code copied.");
+                });
+        }
+
+        function clearCurrent() {
+            if (draftPoint) {
+                draftPoint = null;
+                requestDraw();
+                return;
+            }
+            if (editingCenterIndex >= 0) {
+                editingCenterIndex = -1;
+                centerPreview = null;
+                selectedIndex = -1;
+                markListDirty();
+                requestDraw();
+                return;
+            }
+            if (selectedIndex >= 0) {
+                checkpoints.splice(selectedIndex, 1);
+                selectedIndex = Math.min(selectedIndex, checkpoints.length - 1);
+                markListDirty();
+                requestDraw();
+            }
+        }
+
+        function clearAll() {
+            checkpoints = [];
+            selectedIndex = -1;
+            draftPoint = null;
+            editingCenterIndex = -1;
+            centerPreview = null;
+            markListDirty();
+            requestDraw();
+        }
+
+        function loadImage(file) {
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = () => {
+                const img = new Image();
+                img.onload = () => {
+                    trackImage = img;
+                    worldWidth = img.naturalWidth;
+                    worldHeight = img.naturalHeight;
+                    fitView();
+                    showToast(`Loaded image: ${worldWidth} x ${worldHeight}`);
+                };
+                img.src = reader.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        canvas.addEventListener("pointermove", event => {
+            pointer = screenToWorld(event.clientX, event.clientY);
+            hovered = nearestHit(pointer);
+            if (editingCenterIndex >= 0 && checkpoints[editingCenterIndex]) {
+                centerPreview = closestPointOnCheckpoint(pointer, checkpoints[editingCenterIndex]);
+            }
+
+            if (drag) {
+                if (drag.part === "p1") {
+                    checkpoints[drag.index].x1 = pointer.x;
+                    checkpoints[drag.index].y1 = pointer.y;
+                    const center = closestPointOnCheckpoint(centerOf(checkpoints[drag.index]), checkpoints[drag.index]);
+                    checkpoints[drag.index].cx = center.x;
+                    checkpoints[drag.index].cy = center.y;
+                    markListDirty();
+                } else if (drag.part === "p2") {
+                    checkpoints[drag.index].x2 = pointer.x;
+                    checkpoints[drag.index].y2 = pointer.y;
+                    const center = closestPointOnCheckpoint(centerOf(checkpoints[drag.index]), checkpoints[drag.index]);
+                    checkpoints[drag.index].cx = center.x;
+                    checkpoints[drag.index].cy = center.y;
+                    markListDirty();
+                } else if (drag.part === "pan") {
+                    view.x = event.clientX - drag.startClientX + drag.startViewX;
+                    view.y = event.clientY - drag.startClientY + drag.startViewY;
+                }
+            }
+
+            requestDraw();
         });
 
-        // number
-        const mid = [(p1[0]+p2[0])/2, (p1[1]+p2[1])/2];
-        ctx.fillStyle = 'white';
-        ctx.font = `${16/scale}px Arial`;
-        ctx.fillText(i+1, mid[0]-6/scale, mid[1]+6/scale);
+        canvas.addEventListener("pointerdown", event => {
+            pointer = screenToWorld(event.clientX, event.clientY);
+            hovered = nearestHit(pointer);
+            isPointerDown = true;
 
-        // distance to previous
-        if (i > 0) {
-            const prevMid = getMid(checkpoints[i-1]);
-            const d = Math.hypot(mid[0]-prevMid[0], mid[1]-prevMid[1]);
+            if (event.button === 1 || event.altKey || event.shiftKey) {
+                drag = {
+                    part: "pan",
+                    startClientX: event.clientX,
+                    startClientY: event.clientY,
+                    startViewX: view.x,
+                    startViewY: view.y
+                };
+                canvas.setPointerCapture(event.pointerId);
+                return;
+            }
 
-            ctx.strokeStyle = '#fdcb6e';
-            ctx.lineWidth = 2 / scale;
-            ctx.setLineDash([6/scale,4/scale]);
-            ctx.beginPath();
-            ctx.moveTo(prevMid[0], prevMid[1]);
-            ctx.lineTo(mid[0], mid[1]);
-            ctx.stroke();
-            ctx.setLineDash([]);
+            if (hovered) {
+                selectedIndex = hovered.index;
+                drag = { index: hovered.index, part: hovered.part };
+                canvas.setPointerCapture(event.pointerId);
+                markListDirty();
+                requestDraw();
+            }
+        });
 
-            const labelX = (prevMid[0]+mid[0])/2;
-            const labelY = (prevMid[1]+mid[1])/2;
-            ctx.fillStyle = '#fdcb6e';
-            ctx.font = `${14/scale}px Arial`;
-            ctx.fillText(`${d.toFixed(0)}`, labelX, labelY-8/scale);
-        }
-    });
+        canvas.addEventListener("pointerup", event => {
+            const released = screenToWorld(event.clientX, event.clientY);
+            const hadDrag = drag;
+            isPointerDown = false;
+            drag = null;
 
-    // current segment
-    currentPoints.forEach(p => {
-        ctx.beginPath();
-        ctx.arc(p[0], p[1], 6/scale, 0, Math.PI*2);
-        ctx.fillStyle = '#667eea';
-        ctx.fill();
-    });
-    if (currentPoints.length === 2) {
-        ctx.strokeStyle = '#667eea';
-        ctx.lineWidth = 3/scale;
-        ctx.setLineDash([8/scale,5/scale]);
-        ctx.beginPath();
-        ctx.moveTo(currentPoints[0][0], currentPoints[0][1]);
-        ctx.lineTo(currentPoints[1][0], currentPoints[1][1]);
-        ctx.stroke();
-        ctx.setLineDash([]);
-    }
-}
+            try {
+                canvas.releasePointerCapture(event.pointerId);
+            } catch (error) { }
 
-/* ---------- HELPERS ---------- */
-function getMid(cp) { const [a,b]=cp; return [(a[0]+b[0])/2, (a[1]+b[1])/2]; }
-function distanceBetweenLastTwo() {
-    if (checkpoints.length < 2) return 0;
-    const a = getMid(checkpoints[checkpoints.length-2]);
-    const b = getMid(checkpoints[checkpoints.length-1]);
-    return Math.hypot(b[0]-a[0], b[1]-a[1]);
-}
+            if (hadDrag) {
+                selectedIndex = -1;
+                markListDirty();
+                requestDraw();
+                return;
+            }
 
-/* ---------- UI ---------- */
-function updateStatus(txt) {
-    document.getElementById('statusText').textContent = txt;
-    document.getElementById('checkpointCount').textContent = checkpoints.length;
-}
-function clearCurrent() { currentPoints=[]; updateStatus('Current cleared'); redraw(); }
-function clearAll() {
-    if (confirm('Delete all checkpoints?')) {
-        checkpoints=[]; currentPoints=[];
-        updateStatus('All cleared'); updateCheckpointList(); exportCode(); redraw();
-    }
-}
-function editCheckpoint(i) {
-    currentPoints = [...checkpoints[i]];
-    checkpoints.splice(i,1);
-    updateCheckpointList(); redraw();
-    updateStatus('Edit mode – click to adjust');
-}
-function deleteCheckpoint(i) {
-    checkpoints.splice(i,1);
-    updateCheckpointList(); redraw();
-    updateStatus(`CP ${i+1} deleted`);
-}
+            if (editingCenterIndex >= 0 && checkpoints[editingCenterIndex]) {
+                const center = closestPointOnCheckpoint(released, checkpoints[editingCenterIndex]);
+                checkpoints[editingCenterIndex].cx = center.x;
+                checkpoints[editingCenterIndex].cy = center.y;
+                editingCenterIndex = -1;
+                centerPreview = null;
+                selectedIndex = -1;
+                markListDirty();
+                requestDraw();
+                return;
+            }
 
-/* ---------- LIST ---------- */
-function updateCheckpointList() {
-    const list = document.getElementById('checkpointList');
-    list.innerHTML = '';
-    checkpoints.forEach((cp,i) => {
-        const [p1,p2] = cp;
-        const dist = i>0 ? Math.hypot(
-            getMid(cp)[0]-getMid(checkpoints[i-1])[0],
-            getMid(cp)[1]-getMid(checkpoints[i-1])[1]
-        ).toFixed(0) : '';
-        const distTxt = dist ? ` | Δ${dist}px` : '';
-        const div = document.createElement('div');
-        div.className='checkpoint-item';
-        div.innerHTML = `
-            <div>CP ${i+1}: (${p1[0].toFixed(0)},${p1[1].toFixed(0)})→(${p2[0].toFixed(0)},${p2[1].toFixed(0)})${distTxt}</div>
-            <div>
-                <button class="btn-small" onclick="editCheckpoint(${i})">Edit</button>
-                <button class="btn-small" onclick="deleteCheckpoint(${i})">Delete</button>
-            </div>`;
-        list.appendChild(div);
-    });
-}
+            if (hovered) {
+                requestDraw();
+                return;
+            }
 
-/* ---------- EXPORT ---------- */
-function exportCode() {
-    let code = 'TRACK_CHECKPOINT_ZONES = [\n';
-    checkpoints.forEach((cp,i) => {
-        const [p1,p2] = cp;
-        const dist = i>0 ? Math.hypot(
-            getMid(cp)[0]-getMid(checkpoints[i-1])[0],
-            getMid(cp)[1]-getMid(checkpoints[i-1])[1]
-        ).toFixed(0) : 'N/A';
-        code += `    [(${p1[0].toFixed(0)}, ${p1[1].toFixed(0)}), (${p2[0].toFixed(0)}, ${p2[1].toFixed(0)})],  # CP ${i+1} | Δ${dist}px\n`;
-    });
-    code += ']';
-    const ta = document.getElementById('codeOutput');
-    ta.value = code;
-    ta.select();
-    document.execCommand('copy');
-    updateStatus('Code copied with pixel distances');
-}
+            if (!draftPoint) {
+                draftPoint = released;
+                setStatus("Editing");
+            } else if (distance(draftPoint, released) > 1) {
+                addCheckpoint(draftPoint, released);
+            }
+            requestDraw();
+        });
 
-/* ---------- INITIAL STATE ---------- */
-updateStatus('Load an image');
-</script>
+        canvas.addEventListener("pointerleave", () => {
+            if (!isPointerDown) {
+                hovered = null;
+                requestDraw();
+            }
+        });
+
+        canvas.addEventListener("wheel", event => {
+            event.preventDefault();
+            const before = screenToWorld(event.clientX, event.clientY);
+            const factor = event.deltaY < 0 ? 1.12 : 0.89;
+            view.scale *= factor;
+            clampView();
+            const rect = canvas.getBoundingClientRect();
+            view.x = event.clientX - rect.left - before.x * view.scale;
+            view.y = event.clientY - rect.top - before.y * view.scale;
+            requestDraw();
+        }, { passive: false });
+
+        loadImageBtn.addEventListener("click", () => imageInput.click());
+        imageInput.addEventListener("change", event => loadImage(event.target.files[0]));
+        clearCurrentBtn.addEventListener("click", clearCurrent);
+        clearAllBtn.addEventListener("click", clearAll);
+        importBtn.addEventListener("click", importCheckpoints);
+        copyBtn.addEventListener("click", exportPython);
+
+        document.getElementById("zoomInBtn").addEventListener("click", () => {
+            view.scale *= 1.2;
+            clampView();
+            requestDraw();
+        });
+        document.getElementById("zoomOutBtn").addEventListener("click", () => {
+            view.scale *= 0.8;
+            clampView();
+            requestDraw();
+        });
+        document.getElementById("fitBtn").addEventListener("click", fitView);
+        document.getElementById("resetBtn").addEventListener("click", () => {
+            view.scale = 1;
+            view.x = 24;
+            view.y = 24;
+            requestDraw();
+        });
+
+        window.addEventListener("resize", resizeCanvas);
+
+        resizeCanvas();
+        requestDraw();
+    </script>
 </body>
+
 </html>

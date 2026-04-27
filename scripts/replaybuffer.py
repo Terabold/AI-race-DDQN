@@ -1,5 +1,3 @@
-# חוצץ חוויות - שומר חוויות עבר ללמידה
-# דגימה אקראית שוברת קורלציה בין פריימים עוקבים
 import numpy as np
 import random
 from collections import deque
@@ -15,7 +13,7 @@ class ReplayBuffer:
         self.buffer.append((state, action, reward, next_state, done))
 
     def sample(self, batch_size):
-        # אצווה אקראית ללמידה
+        # מקבץ אקראי ללמידה
         if len(self.buffer) < batch_size:
             indices = range(len(self.buffer))
         else:

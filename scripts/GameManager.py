@@ -1,24 +1,22 @@
-# מנהל מצב המשחק הגלובלי והגדרות שחקנים
-
-class GameStateManager:
-    """
-    Global state manager for game flow and player settings.
-    
-    States: 'menu' -> 'settings' -> 'game' or 'training'
-    """
-    
+# מנהל מצב המשחק
+class GameStateManager:  
     def __init__(self):
+        # מצב משחק ברירת מחדל על התפריט
         self.state = 'menu'
         
         # הגדרות שחקנים
+        # סוג שחקן
         self.player1_selection = None
         self.player2_selection = None
+
+        # צבעים של המכוניות 
         self.player1_car_color = "Blue"
         self.player2_car_color = "Red"
-        
+
+    # להגדיר מצב משחק  
     def setState(self, new_state):
         self.state = new_state
-        
+    # לקבל מצב משחק  
     def getState(self):
         return self.state
 

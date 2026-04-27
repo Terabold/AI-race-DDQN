@@ -22,6 +22,7 @@ CAR_COLORS = {
     "Yellow": r"Assets\photo/car-yellow.png",
     "White": r"Assets\photo/car-white.png",
 }
+
 COLORS = {
     "title": (255, 181, 33),
     "p1": (0, 128, 255),

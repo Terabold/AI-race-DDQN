@@ -5,13 +5,6 @@ from scripts.ResourceLoader import resource_manager
 import random
 
 class Obstacle(pygame.sprite.Sprite):
-    """
-    Bomb obstacles that slow the car when hit.
-    
-    show_image=True: Full bomb sprite (gameplay mode)
-    show_image=False: Red hitbox only (training mode - faster)
-    """
-    
     def __init__(self, x, y, show_image=True):
         super().__init__()
         self.show_image = show_image
@@ -26,7 +19,7 @@ class Obstacle(pygame.sprite.Sprite):
         # תחומי גודל להתנגשות
         self.mask_surface = pygame.Surface(OBSTACLE_SIZE, pygame.SRCALPHA) 
         pygame.draw.rect(self.mask_surface, (255, 255, 255), OBSTACLE_HITBOX)
-        self.mask = pygame.mask.from_surface(self.mask_surface)  
+        self.mask = pygame.mask.from_surface(self.mask_surface)  # מסכה לזיהוי התנגשות
         self.rect = self.image.get_rect(center=(x, y))
 
     def generate_obstacles(self, num_obstacles=10):  

@@ -13,18 +13,11 @@ from scripts.ResourceLoader import resource_manager
 
 
 class Environment:
-    """
-    Main gameplay environment for human play and AI inference.
-    
-    Supports 1-2 players (Human or DQN AI), handles collisions, 
-    finish line detection, obstacles, countdown, and pause.
-    
-    Game states: "countdown" -> "running" -> "finished"/"failed"/"paused"
-    """
-    
     def __init__(self, surface, car_color1=None, car_color2=None):
         self.surface = surface
         self.grass = resource_manager.images['grass']
+        self.car1 = None
+        self.car2 = None
 
         self.game_state = "countdown"
         self.previous_state = None
@@ -71,7 +64,6 @@ class Environment:
             self.all_sprites.add(self.car2)
 
     def setup_track(self):
-        # טעינת נכסי מסלול מה-ResourceManager
         self.track = resource_manager.images['track']
         self.track_border = resource_manager.images['track_border']
         self.track_border_mask = resource_manager.track_border_mask
@@ -137,11 +129,15 @@ class Environment:
         self.run_countdown()
 
     def check_game_end_condition(self):
+        # בדיקה אם שחקן 1 עדיין בתחרות (פעיל, לא סיים, לא התנגש ועדיין יש לו זמן בטיימר)
         car1_racing = self.car1_active and not self.car1_finished and not self.car1.failed and self.car1_time > 0
+        # בדיקה דומה לשחקן 2
         car2_racing = self.car2_active and not self.car2_finished and not self.car2.failed and self.car2_time > 0
 
+        # אם אף אחד לא משחק כבר
         if not car1_racing and not car2_racing:
-            any_finished = (self.car1_active and self.car1_finished) or (self.car2_active and self.car2_finished)
+            # אם אחד מהשחקנים סיים
+            any_finished = (self.car1_active and self.car1_finished) or (self.car2_active and self.car2_finished) 
 
             if any_finished:
                 self.game_state = "finished"
@@ -168,26 +164,20 @@ class Environment:
                 if self.car2_time <= 0:
                     self.car2.can_move = False
 
+            # בחירת הזמן הגבוה ביותר מבין שני השחקנים להצגה בטיימר הראשי
             self.remaining_time = max(self.car1_time, self.car2_time)
             self.check_game_end_condition()
 
     def move(self, action1, action2):
-        """
-        Process one frame of car movement for both players.
-        
-        Actions: 0=none, 1=forward, 2=back, 3=left, 4=right,
-                 5=forward+left, 6=forward+right, 7=back+left, 8=back+right
-        
-        Returns: (done, car1_info, car2_info) where info contains
-                 collision/finished/hit_obstacle booleans
-        """
         if self.game_state != "running":
             return False, {}, {}
 
         car1_info = {'collision': False, 'finished': False, 'hit_obstacle': False}
         car2_info = {'collision': False, 'finished': False, 'hit_obstacle': False}
 
-        # רכב 1
+        # עיבוד פריים בודד של תנועה עבור שני השחקנים
+        # מחזיר: (האם נגמר, מידע שחקן 1, מידע שחקן 2)
+        # המידע כולל: התנגשות, סיום, או פגיעה במכשול
         if self.car1_active and not self.car1_finished and not self.car1.failed and self.car1_time > 0:
             pre_failed = self.car1.failed
             pre_finished = self.car1_finished
@@ -231,7 +221,7 @@ class Environment:
         if hit:
             car.velocity *= OBSTACLE_VELOCITY_REDUCTION
             self.obstacle_sound.play()
-            return pre_velocity > 1.0
+            return pre_velocity > 1.0 # למנוע בעיות במהירות נמוכה במילא האטה שלא נראת לעין
         return False
     
     def toggle_pause(self):
@@ -244,6 +234,7 @@ class Environment:
             self.handle_music(play=True)
 
     def draw(self):
+        # ציור קבוצתי של הרקע, המסלול וקו הסיום (יעיל יותר מציור של כל אחד בנפרד)
         self.surface.blits((
             (self.grass, (0, 0)),
             (self.track, (0, 0)),
@@ -264,14 +255,18 @@ class Environment:
             self.pause_menu.draw()
             
     def check_single_car_finish(self, car, was_finished):
-        if was_finished or car.failed:
+        if was_finished or car.failed: # אם כבר סיים או נפסל אין טעם לבדוק
             return False
         
+        # חישוב המרחק היחסי (offset) בין הפינה של הרכב לפינה של קו הסיום
+        # offset = (car_x - finish_x, car_y - finish_y)
         car_offset = (int(car.rect.left - self.finish_line_position[0]),
                      int(car.rect.top - self.finish_line_position[1]))
         
-        if finish_overlap := self.finish_mask.overlap(car.mask, car_offset):
-            if finish_overlap[1] > 2:
+        # בדיקת חפיפה בין הפיקסלים של הרכב למסכת הסיום
+        overlap = self.finish_mask.overlap(car.mask, car_offset)
+        if overlap:
+            if overlap[1] > 2: # כלומר במידה ולא מדויק והרכב נכנס פיקסל אחד פנימה בדיקה עדיין תזהה חצייה שגוייה
                 if car == self.car1:
                     self.car1_finished = True
                 else:
@@ -286,6 +281,7 @@ class Environment:
             return False
         
         offset = (int(car.rect.left), int(car.rect.top))
+        # המרחק היחסי לקו הסיום
         finish_offset = (int(car.rect.left - self.finish_line_position[0]),
                         int(car.rect.top - self.finish_line_position[1]))
         
@@ -296,8 +292,9 @@ class Environment:
             self.check_game_end_condition()
             return True
         
-        if finish_overlap := self.finish_mask.overlap(car.mask, finish_offset):
-            if finish_overlap[1] <= 2:
+        overlap = self.finish_mask.overlap(car.mask, finish_offset)
+        if overlap:
+            if overlap[1] <= 2:
                 car.failed = True
                 car.can_move = False
                 self.collide_sound.play()
@@ -307,12 +304,8 @@ class Environment:
         return False
 
     def handle_car_movement(self, car, action):
-        """
-        Apply action to car.
-        
-        Actions: 0=none, 1=forward, 2=back, 3=left, 4=right,
-                 5=forward+left, 6=forward+right, 7=back+left, 8=back+right
-        """
+        # החלת הפעולה שנבחרה על הרכב
+        # 0=כלום, 1=קדימה, 2=אחורה, 3=שמאלה, 4=ימינה...
         if action is None:
             return
 
@@ -333,7 +326,6 @@ class Environment:
             car.reduce_speed()
 
     def setup_sound(self):
-        # טעינת סאונדים מה-ResourceManager
         self.collide_sound = resource_manager.sounds['collision']
         self.win_sound = resource_manager.sounds['win']
         self.obstacle_sound = resource_manager.sounds['obstacle']
@@ -380,6 +372,8 @@ class Environment:
         norm_vel = max(0.0, car.velocity / car.max_velocity)
         angle_rad = np.radians(car.angle)
         
+        # איחוד כל נתוני החיישנים לרשימה אחת ארוכה עבור הסוכן
+        # [d1...d30, speed, sin, cos] (33 values)
         state = np.concatenate([
             norm_wall_rays,
             norm_bomb_rays,

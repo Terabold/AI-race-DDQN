@@ -1,13 +1,9 @@
-# לטעון משאבים של המשחק על מנת לא לבזבז זמן במשחק עצמו
-# כל הטעינה מתבצעת ברגע פתיחת המשחק ואז כל האשבים זמינים מיידית
 import torch
 import pygame
 import os
 from pathlib import Path
 
 class ResourceManager:
-    # Central manager for ALL game assets - images, sounds, fonts, masks, models
-    
     def __init__(self):
         self.device = None
         
@@ -20,28 +16,28 @@ class ResourceManager:
         # מקום בזיכרון לפונטים
         self.fonts = {}
         
-        # מסכה של גבולות המסלול לגלות התנגשות מהר יותר
+        # מקום בזיכרון של המסכה של גבולות המסלול
         self.track_border_mask = None
         
-        # מודל במצב inference לטעינה מהירה למשחק
+        # מודל במצב inference מקום בזיכרון של
         self.model_checkpoint = None
     
     def initialize(self):
-        # Initialize device
+        # בודק אם קודה זמין במחשב
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     
     def load_all(self):
-        # לטעון את כל המשאבים
+        # טוען את כל המשבים
         try:
-            self._load_images()
-            self._load_sounds()
-            self._load_fonts()
-            self._load_model()
+            self.load_images()
+            self.load_sounds()
+            self.load_fonts()
+            self.load_model()
         except Exception as e:
             print(f"ResourceManager error: {e}")
     
-    def _load_images(self):
-        # Load all game images
+    def load_images(self):
+        # טוען תמונות למשחק
         from scripts.Constants import (
             MENUBG, TRACK, TRACK_BORDER, GRASS, FINISHLINE, BOMB,
             CAR_COLORS, FINISHLINE_SIZE, WIDTH, HEIGHT
@@ -68,18 +64,17 @@ class ResourceManager:
             self.images['finishline'] = pygame.transform.scale(finishline, FINISHLINE_SIZE)
             self.images['finishline_mask'] = pygame.mask.from_surface(self.images['finishline'])
             
-            # תמונת הרכב המקורית לכל צבע, סובב ל-90 מעלות וסקייל לגדלים שונים למשחק
+            # טוען תמונות של הרכבים לפי צבעים
             for color, path in CAR_COLORS.items():
                 img = pygame.image.load(path).convert_alpha()
                 img_rotated = pygame.transform.rotate(img, 90)
                 self.images[f'car_{color}'] = pygame.transform.scale(img_rotated, (50, 25))
-                # שומר גם את התמונה המקורית לאפשר סיבוב וסקייל דינמי במהלך המשחק
                 self.images[f'car_{color}_original'] = img
         except Exception as e:
             print(f"Image loading error: {e}")
     
-    def _load_sounds(self):
-        # Load all game sounds
+    def load_sounds(self):
+        # טוען סאונדים של המשחק
         from scripts.Constants import (
             WIN_SOUND, COUNTDOWN_SOUND, COLLIDE_SOUND, 
             OBSTACLE_SOUND, BACKGROUND_MUSIC, DEFAULT_SOUND_VOLUME,
@@ -92,27 +87,27 @@ class ResourceManager:
                 pygame.mixer.init()
             
             # סאונדים
-            self.sounds['win'] = self._load_sound(WIN_SOUND, WIN_SOUND_VOLUME)
-            self.sounds['countdown'] = self._load_sound(COUNTDOWN_SOUND, COUNTDOWN_SOUND_VOLUME)
-            self.sounds['collision'] = self._load_sound(COLLIDE_SOUND, COLLISION_SOUND_VOLUME)
-            self.sounds['obstacle'] = self._load_sound(OBSTACLE_SOUND, OBSTACLE_SOUND_VOLUME)
+            self.sounds['win'] = self.load_sound(WIN_SOUND, WIN_SOUND_VOLUME)
+            self.sounds['countdown'] = self.load_sound(COUNTDOWN_SOUND, COUNTDOWN_SOUND_VOLUME)
+            self.sounds['collision'] = self.load_sound(COLLIDE_SOUND, COLLISION_SOUND_VOLUME)
+            self.sounds['obstacle'] = self.load_sound(OBSTACLE_SOUND, OBSTACLE_SOUND_VOLUME)
             
             # מוזיקה ברקע
             self.sounds['background_music_path'] = BACKGROUND_MUSIC
         except Exception as e:
             print(f"Sound loading error: {e}")
     
-    def _load_sound(self, path, volume):
-        # Load a single sound with volume
+    def load_sound(self, path, volume):
+        # טוען סאונד בודד עם ווליום
         try:
-            sound = pygame.mixer.Sound(str(Path(path)))
+            sound = pygame.mixer.Sound(str(Path(path)))  # טעינת קובץ סאונד מהנתיב והמרתו לאובייקט סאונד
             sound.set_volume(volume)
             return sound
         except:
             return None
     
-    def _load_fonts(self):
-        # Load common fonts
+    def load_fonts(self):
+        # טוען פונטים
         from scripts.Constants import FONT, COUNTDOWN_FONT
         
         try:
@@ -127,14 +122,14 @@ class ResourceManager:
             print(f"Font loading error: {e}")
     
     def get_font(self, font_path, size):
-        # Get font from cache, load if not cached
+        # מביא פונט לפי הנתיב והגודל שלו, אם אין טוען אותו
         key = (font_path, size)
         if key not in self.fonts:
             self.fonts[key] = pygame.font.Font(font_path, size)
         return self.fonts[key]
     
-    def _load_model(self):
-        # Load inference model for AI gameplay
+    def load_model(self):
+        # טוען מודל למשחק
         try:
             model_path = r"models\UseModel\model_inference.pt"
             

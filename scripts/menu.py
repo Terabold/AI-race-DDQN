@@ -1,17 +1,11 @@
-# כל מסכי התפריט
 import pygame
 import sys
 from scripts.Constants import FONT, WHITE, BLACK, COLORS, CAR_COLORS, CAR_COLORS_LIST, WIDTH, HEIGHT
 from scripts.utils import Button, calculate_ui_constants
 from scripts.GameManager import game_state_manager
 from scripts.ResourceLoader import resource_manager
-# from pathlib import Path
-
-
-# מחלקת בסיס לכל מסכי התפריט
 
 class BaseMenuScreen:
-    # Base menu screen with common button handling and drawing.
     
     def __init__(self, screen, title="Menu"):
         self.screen = screen
@@ -57,6 +51,7 @@ class BaseMenuScreen:
             button_color = btn.bg_color or (70, 70, 70)
         
         if btn.selected and not btn.disabled:
+            # הבהרת צבע הכפתור כשעומדים עליו
             button_color = tuple(min(c + 30, 255) for c in button_color)
         
         pygame.draw.rect(self.screen, button_color, btn.rect, border_radius=btn.border_radius)
@@ -114,16 +109,13 @@ class BaseMenuScreen:
         self.draw()
 
 
-# תפריט ראשי - שחק, אמן, יציאה
-
 class MainMenu(BaseMenuScreen):
-    # Main menu screen with Play, Train AI, and Quit buttons.
     
     def __init__(self, screen):
         super().__init__(screen, "RACING GAME")
     
     def initialize(self):
-        # חישוב מיקומי פריסה
+        # חישוב מיקומים לפי גודל המסך
         center_x = self.screen.get_width() // 2
         start_y_position = int(self.screen.get_height() * 0.3)
         button_width = int(self.screen.get_width() * 0.25)
@@ -132,21 +124,18 @@ class MainMenu(BaseMenuScreen):
         buttons = [
             ('PLAY', lambda: game_state_manager.setState('settings'), None),
             ('TRAIN AI', lambda: game_state_manager.setState('training'), (70, 100, 180)),
-            ('QUIT', self._quit, (200, 50, 50))
+            ('QUIT', self.quit, (200, 50, 50))
         ]
         
         for i, (text, action, color) in enumerate(buttons):
             self.create_button(text, action, center_x - button_width // 2, start_y_position + i * spacing, button_width, color)
     
-    def _quit(self):
+    def quit(self):
         pygame.quit()
         sys.exit()
 
 
-# הגדרות מרוץ - בחירת שחקנים וצבעי רכב
-
 class RaceSettingsMenu(BaseMenuScreen):
-    # Race settings: select player types (Human/DQN) and car colors.
     
     def __init__(self, screen):
         self.car_images = {}
@@ -174,7 +163,7 @@ class RaceSettingsMenu(BaseMenuScreen):
         screen_width, screen_height = self.screen.get_size()
         center_x = screen_width // 2
         
-        # קבועי פריסה
+        # חישוב רווחים בין עמודות השחקנים
         column_offset_from_center = int(screen_width * 0.12)
         car_selection_offset_from_center = int(screen_width * 0.16)
         
@@ -193,7 +182,7 @@ class RaceSettingsMenu(BaseMenuScreen):
         spacing = self.UI['BUTTON_HEIGHT'] + int(self.UI['BUTTON_SPACING'] * 0.8)
         
         # כפתורי סוג שחקן
-        for i, ptype in enumerate(["Human", "DQN"]):
+        for i, ptype in enumerate(["Human", "DDQN"]):
             y = top_margin + (i + 1) * spacing
             b1 = self.create_button(ptype, lambda pt=ptype: self.toggle_p1(pt), 
                                    p1_column_center_x - button_width//2, y, button_width)
@@ -244,7 +233,7 @@ class RaceSettingsMenu(BaseMenuScreen):
     
     def update(self):
         super().update()
-        # השבתת צבע רכב שכבר נבחר על ידי היריב
+        # מונע בחירת אותו צבע על ידי שני שחקנים
         for btn in self.p1_car_btns:
             btn.disabled = btn.color_name == game_state_manager.player2_car_color
         for btn in self.p2_car_btns:
@@ -254,7 +243,7 @@ class RaceSettingsMenu(BaseMenuScreen):
         self.draw_title()
         self.draw_labels()
         
-        ptypes = ["Human", "DQN"]
+        ptypes = ["Human", "DDQN"]
         for i, btn in enumerate(self.p1_type_btns):
             selected = game_state_manager.player1_selection == ptypes[i]
             self.draw_button(btn, selected, COLORS["p1"])
@@ -309,7 +298,7 @@ class RaceSettingsMenu(BaseMenuScreen):
         box = pygame.Rect(x - 100, y - 125, 200, 250)
         
         for i in range(3):
-            # אפקט רקע מוחלש לפאנל
+            # אפקט רקע מוחלש
             panel_background_surface = pygame.Surface((200 - i*2, 250 - i*2))
             panel_background_surface.set_alpha(100 - i*20)
             panel_background_surface.fill(color)
@@ -338,10 +327,7 @@ class RaceSettingsMenu(BaseMenuScreen):
             self.screen.blit(key_text, key_text.get_rect(center=(x + 45, key_row_y_position)))
 
 
-# תפריט השהייה - שכבה במהלך משחק
-
 class PauseMenu:
-    # Pause overlay with Resume and Back buttons.
     
     def __init__(self, surface):
         self.surface = surface
@@ -394,6 +380,8 @@ class PauseMenu:
         return False
     
     def draw(self):
+        # יצירת שכבת רקע שקופה
+        # pygame, SRCALPHA
         overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
         overlay.fill((0, 0, 0, 180))
         self.surface.blit(overlay, (0, 0))
@@ -405,15 +393,16 @@ class PauseMenu:
         self.surface.blit(title_shadow, (title_x + 4, title_y + 4))
         self.surface.blit(title_text, (title_x, title_y))
         
-        self._draw_button(self.resume_button, "Resume", self.resume_hovered, (70, 130, 70))
-        self._draw_button(self.back_button, "Back", self.back_hovered, (130, 70, 70))
+        self.draw_button(self.resume_button, "Resume", self.resume_hovered, (70, 130, 70))
+        self.draw_button(self.back_button, "Back", self.back_hovered, (130, 70, 70))
         
         hint_text = self.font_medium.render("Press ESC to Resume", True, (200, 200, 200))
         hint_x = (WIDTH - hint_text.get_width()) // 2
         hint_y = HEIGHT // 2 + 150
         self.surface.blit(hint_text, (hint_x, hint_y))
     
-    def _draw_button(self, rect, text, hovered, base_color):
+    def draw_button(self, rect, text, hovered, base_color):
+        # הבהרת הכפתור במעבר עכבר
         color = tuple(min(c + 40, 255) for c in base_color) if hovered else base_color
         
         pygame.draw.rect(self.surface, color, rect, border_radius=10)

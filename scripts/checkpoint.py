@@ -1,24 +1,24 @@
-# צ'קפוינטים - מונע מה-AI לרמות ע"י נסיעה אחורה וקדימה באותה נקודה
 import pygame
 from scripts.Constants import TRACK_CHECKPOINT_ZONES, FONT
 
-
+# פונקציה הבודקת חיתוך בין שני קטעים (מסלול הרכב וקו הצ'קפוינט)
 def lines_intersect(p1, p2, p3, p4):
-    # בדיקה האם שני קטעים חוצים זה את זה
-    x1, y1 = p1
-    x2, y2 = p2
-    x3, y3 = p3
-    x4, y4 = p4
+    x1, y1 = p1 # מיקום הרכב הקודם
+    x2, y2 = p2 # מיקום הרכב הנוכחי
+    x3, y3 = p3 # נקודה 1 של הצ'קפוינט
+    x4, y4 = p4 # נקודה 2 של הצ'קפוינט
     
-    denom = (x2 - x1) * (y4 - y3) - (y2 - y1) * (x4 - x3)
-    if abs(denom) < 1e-10:  # מקביל
+    # חישוב המכנה לפי נוסחת דטרמיננטה (למציאת חיתוך בין קווים)
+    den = (x2 - x1) * (y4 - y3) - (y2 - y1) * (x4 - x3)
+    if abs(den) < 1e-10: # אם המכנה אפס, הקווים מקבילים
         return False
     
-    t = ((x3 - x1) * (y4 - y3) - (y3 - y1) * (x4 - x3)) / denom
-    u = ((x3 - x1) * (y2 - y1) - (y3 - y1) * (x2 - x1)) / denom
+    # חישוב מיקום נקודת החיתוך היחסית על פני שני הקווים
+    ua = ((x3 - x1) * (y4 - y3) - (y3 - y1) * (x4 - x3)) / den
+    ub = ((x3 - x1) * (y2 - y1) - (y3 - y1) * (x2 - x1)) / den
     
-    return 0 <= t <= 1 and 0 <= u <= 1
-
+    # אם שני המקדמים בין 0 ל-1, נקודת החיתוך נמצאת בתוך שני הקטעים
+    return 0 <= ua <= 1 and 0 <= ub <= 1
 
 class CheckpointManager:
     def __init__(self):
@@ -34,47 +34,46 @@ class CheckpointManager:
         self.prev_pos = None
 
     def check_crossing(self, car_pos):
-        # מחזיר (חצה קדימה, חצה אחורה)
         if self.prev_pos is None:
             self.prev_pos = car_pos
             return False, False
 
-        # בדיקה האם חצה את הצ'קפוינט הנוכחי
+        # בדיקת חצייה קדימה (של הצ'קפוינט הבא בתור)
         if self.current_idx < self.total_checkpoints:
             p1, p2 = self.zones[self.current_idx]
             if lines_intersect(self.prev_pos, car_pos, p1, p2):
-                self.cross_counts[self.current_idx] += 1
-                self.crossed_count += 1
-                self.current_idx += 1
+                self.cross_counts[self.current_idx] += 1 # סימון שהקו הזה נחצה
+                self.crossed_count += 1 # עדכון סך כל החציות במסלול
+                self.current_idx += 1 # קידום היעד לצ'קפוינט הבא
                 self.prev_pos = car_pos
-                return True, False
+                return True, False # מחזיר: אמת (התקדמנו), שקר (לא חזרנו אחורה)
 
-        # בדיקה לאחור דרך צ'קפוינטים שכבר עברו
+        # בדיקת נסיעה לאחור (חצייה מחדש של צ'קפוינטים קודמים)
         for i in range(self.current_idx):
             p1, p2 = self.zones[i]
             if lines_intersect(self.prev_pos, car_pos, p1, p2):
-                self.cross_counts[i] += 1
+                self.cross_counts[i] += 1 # סימון חצייה נוספת של קו ישן
                 self.prev_pos = car_pos
-                return False, True
+                return False, True # מחזיר: שקר (לא התקדמנו), אמת (חזרנו אחורה)
 
         self.prev_pos = car_pos
         return False, False
 
     def draw(self, surface):
-        # ירוק = יעד נוכחי, אפור = עבר, אדום = עבר מספר פעמים
         for i, (p1, p2) in enumerate(self.zones):
             if i == self.current_idx:
-                color, width = (0, 255, 0), 4
+                color, width = (0, 255, 0), 4 # הבא בתור - ירוק
             elif i < self.current_idx:
+                # עברנו - אפור, או אדום אם חזרנו אחורה וסימנו שוב
                 color = (255, 0, 0) if self.cross_counts[i] > 1 else (100, 100, 100)
                 width = 3 if self.cross_counts[i] > 1 else 2
             else:
-                color, width = (0, 100, 0), 2
+                color, width = (0, 100, 0), 2 # טרם הושג - ירוק כהה
             
             pygame.draw.line(surface, color, p1, p2, width)
+            # מציאת נקודת המרכז של הקו כדי להציג בה את הטקסט
             cx, cy = (p1[0] + p2[0]) // 2, (p1[1] + p2[1]) // 2
-            pygame.draw.circle(surface, color, (cx, cy), 4)
             
             if self.cross_counts[i] > 0:
-                text = self.font.render(f"x{self.cross_counts[i]}", True, (255, 255, 255))
-                surface.blit(text, (cx + 10, cy - 10))
+                txt = self.font.render(f"x{self.cross_counts[i]}", True, (255, 255, 255))
+                surface.blit(txt, (cx + 10, cy - 10))

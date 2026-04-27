@@ -5,7 +5,7 @@ import os
 from scripts.Constants import INFERENCE_EPSILON
 from scripts.Environment import Environment
 from scripts.Human_Agent import HumanAgent  
-from scripts.dqn_agent import DQNAgent
+from scripts.ddqn_agent import DDQNAgent
 from scripts.GameManager import game_state_manager
 from scripts.ResourceLoader import resource_manager
 
@@ -20,6 +20,7 @@ class Game:
 
     def initialize_environment(self):
         # קריאת הגדרות מהתפריט והכנת הסביבה
+        # יצירת מילון עם פרטי השחקנים שנבחרו בתפריט (סוג שחקן וצבע רכב)
         settings = {
             'player1': game_state_manager.player1_selection,
             'player2': game_state_manager.player2_selection,
@@ -39,16 +40,16 @@ class Game:
     def create_player(self, player_type, player_num):
         if player_type == "Human":
             return HumanAgent(player_num)
-        elif player_type == "DQN":
-            agent = DQNAgent(device=resource_manager.device)
+        elif player_type == "DDQN":
+            agent = DDQNAgent(device=resource_manager.device)
             
-            # שימוש בנקודת ביקורת טעונה מראש מה-ResourceManager
+            # שימוש בנקודת ביקורת טעונה מראש
             checkpoint = resource_manager.model_checkpoint
             if checkpoint:
                 agent.policy_net.load_state_dict(checkpoint['model_state_dict'])
                 agent.target_net.load_state_dict(checkpoint['target_state_dict'])
             elif os.path.exists(agent.model_path):
-                # גיבוי: טעינת מודל מלא אם inference לא זמין
+                # גיבוי: טעינת מודל מלא
                 agent.load_model(agent.model_path)
             
             agent.epsilon = INFERENCE_EPSILON
@@ -57,7 +58,7 @@ class Game:
             return agent
         return None
 
-    def run(self, dt):
+    def run(self):
         if game_state_manager.getState() != 'game':
             return
         
@@ -84,6 +85,7 @@ class Game:
         if self.environment.game_state != "paused":
             self.environment.update()
             if self.environment.game_state == "running":
+                # קבלת הפעולה הנבחרת (למשל: 1 = קדימה, 3 = שמאלה, 0 = כלום)
                 p1_action = self.get_action(self.player1, 1)
                 p2_action = self.get_action(self.player2, 2)
                 self.environment.move(p1_action, p2_action)
@@ -91,10 +93,9 @@ class Game:
         self.environment.draw()
 
     def get_action(self, player, car_num):
-        if player is None:
+        if player is None: # אין שחקן
             return None
-        if isinstance(player, DQNAgent):
-            # חישוב קרניים רק לשחקן AI - יקר חישובית
+        if isinstance(player, DDQNAgent): # שחקן סוכן
             state = self.environment.get_state(car_num=car_num)
             return player.get_action(state, training=False) if state is not None else 0
-        return player.get_action()
+        return player.get_action() # שחקן אנושי
